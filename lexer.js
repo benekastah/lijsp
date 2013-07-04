@@ -34,22 +34,22 @@ Token.prototype.addPattern = function (p) {
   }
 };
 
-Token.prototype.match = function (stream) {
+Token.prototype.match = function (input) {
   var match,
       matchText;
   for (var i = 0, len = this.patterns.length; i < len; i++) {
-    stream.begin();
+    input.begin();
     var p = this.patterns[i],
         t = util.type(p);
 
     if (t === '[object RegExp]') {
-      match = stream.getRest().match(p);
+      match = input.getRest().match(p);
       if (match) {
         matchText = match[0];
-        stream.undo().movePointer(matchText.length);
+        input.undo().movePointer(matchText.length);
       }
     } else if (t === '[object String]') {
-      matchText = stream.get(p.length);
+      matchText = input.get(p.length);
       if (matchText !== p) {
         matchText = null;
       }
@@ -58,9 +58,9 @@ Token.prototype.match = function (stream) {
     }
 
     if (matchText != null) {
-      return new TokenMatch(this, matchText, stream.commit());
+      return new TokenMatch(this, matchText, input.commit());
     } else {
-      stream.rollback();
+      input.rollback();
     }
   }
 };
@@ -74,18 +74,23 @@ function TokenMatch(token, matchText, pos) {
 exports.TokenMatch = TokenMatch;
 
 
+exports.tokens = [];
 var defToken = function (name) {
-  var patterns = util.slice(arguments, 1);
-  return exports[name] = new Token(name, patterns);
+  var patterns = util.slice(arguments, 1),
+      tok = new Token(name, patterns);
+  exports[name] = tok;
+  exports.tokens.push(tok);
+  return tok;
 };
 
 defToken('OpenList', '(');
 defToken('CloseList', ')');
-defToken('Number', /\d+\.\d+/, /\d+/);
+defToken('Number', /\d+(\.\d+)?/);
 
-var beginSymbol = '\\w\\-+|!@%\\^&\\*=:\\?\\/<>\\.\\\\';
-var endSymbol = beginSymbol + '\\d';
-defToken('Symbol', new RegExp('[' + beginSymbol + '][' + endSymbol + ']*'));
+var symbolChars = '\\w\\-+\\|!@%\\^&\\*=:\\?\\/<>\\\\';
+defToken('Symbol', new RegExp('[' + symbolChars + ']+'));
+
+defToken('Dot', '.', '·');
 
 defToken('Whitespace', /\s+/);
 
@@ -125,11 +130,5 @@ Lexer.Error.prototype.constructor = Lexer.Error;
 
 
 exports.makeLexer = function (input) {
-  return new Lexer(input, [
-    exports.Whitespace,
-    exports.OpenList,
-    exports.CloseList,
-    exports.Number,
-    exports.Symbol
-  ]);
+  return new Lexer(input, exports.tokens);
 };

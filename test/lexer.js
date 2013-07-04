@@ -1,7 +1,8 @@
 
 var assert = require('assert'),
     lexer = require('../lexer'),
-    util = require('../util');
+    util = require('../util'),
+    stream = require('../stream');
 
 var Token = lexer.Token;
 describe('Token', function () {
@@ -59,7 +60,7 @@ describe('Token', function () {
         tDf = new Token('DF', [/df?f/, 'dF', /df/i]);
 
     it('should return a TokenMatch instance with each match', function () {
-      var input = new util.Stream('asdf');
+      var input = new stream.Stream('asdf');
       assert.ok(tA.match(input) instanceof lexer.TokenMatch,
                 'tA should match');
       assert.ok(tS.match(input) instanceof lexer.TokenMatch,
@@ -69,12 +70,12 @@ describe('Token', function () {
     });
 
     it('should return undefined with each non-match', function () {
-      var input = new util.Stream('fdsa');
+      var input = new stream.Stream('fdsa');
       assert.ok(tA.match(input) === void 0);
     });
 
     it('should produce a match from the first matching pattern', function () {
-      var input = new util.Stream('dF');
+      var input = new stream.Stream('dF');
       var match = tDf.match(input);
       assert.ok(match);
       assert.equal('dF', match.matchText);
@@ -86,7 +87,7 @@ var Lexer = lexer.Lexer;
 describe('Lexer', function () {
   describe('#lex', function () {
     it('should throw Lexer.Error when it can\'t produce a match', function () {
-      var lex = new Lexer(new util.Stream('b'), [
+      var lex = new Lexer(new stream.Stream('b'), [
         new Token('A', ['a'])
       ]);
       assert.throws(function () {
@@ -95,7 +96,7 @@ describe('Lexer', function () {
     });
 
     it('should produce one TokenMatch each time it is called', function () {
-      var lex = new Lexer(new util.Stream('aabcacb'), [
+      var lex = new Lexer(new stream.Stream('aabcacb'), [
         new Token('A', [/a+/]),
         new Token('B', ['b']),
         new Token('C', ['c'])
@@ -108,7 +109,7 @@ describe('Lexer', function () {
     });
 
     it('should produce an EOF TokenMatch when input is exhausted', function () {
-      var lex = new Lexer(new util.Stream(''));
+      var lex = new Lexer(new stream.Stream(''));
       var match = lex.lex();
       assert.ok(match);
       assert.equal(lexer.EOF, match.token);

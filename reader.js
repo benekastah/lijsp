@@ -1,154 +1,166 @@
 var lexer = require('./lexer'),
     util = require('./util'),
-    datum = require('./datum');
+    stream = require('./stream'),
+    datum = require('./datum'),
+    undefined;
 
-function Parser(lexer) {
-  this.lexer = lexer;
+function ParseError(message) {
+  if (message) {
+    this.message = this.message + ': ' + message;
+  }
+}
+ParseError.prototype = util.clone(Error.prototype);
+ParseError.prototype.constructor = ParseError;
+ParseError.prototype.message = ParseError.name;
+
+function Parser(lex) {
+  this.lexer = lex;
+  this.actions = {};
+  this.ignoreTokens = [];
+  this.endResult;
+  this.endAction = '__END__';
+  this.end(lexer.EOF);
 }
 exports.Parser = Parser;
 
-Parser.prototype.defaultOptions = {
-  ignore: [lexer.Whitespace]
+Parser.prototype.parse = function () {
+  if (this.endResult ||
+      (this.endResult = this.parseAction(this.endAction))) {
+    return this.endResult;
+  }
+  return this.parseAction(this.startAction);
 };
 
-Parser.prototype.parse = function () {
-  var sliceStart, options;
-  if (util.type(arguments[0]) !== '[object Object]') {
-    sliceStart = 0;
-  } else {
-    sliceStart = 1;
-    options = arguments[0];
-  }
-
-  var tokSets = util.slice(arguments, sliceStart),
-      results = [];
-
-  if (!options) {
-    options = util.clone(this.defaultOptions);
-  }
-
-  if (options.ignore && util.type(options.ignore) !== '[object Array]') {
-    options.ignore = util.asArray(options.ignore);
-  }
-
-  var result;
-  for (var i = 0, len = tokSets.length; i < len; i++) {
-    this.lexer.input.begin();
-    var set = util.asArray(tokSets[i]);
-    result = this.parseSet(options, set);
-    if (result) {
-      results.push({
+Parser.prototype.parseAction = function (name) {
+  var action = this.actions[name],
+      result;
+  for (var i = 0, len = action.length; i < len; i++) {
+    var item, set, callback;
+    item = util.asArray(action[i]);
+    set = util.asArray(item[0]);
+    callback = item[1];
+    result = this.parseSet(set);
+    if (result !== undefined) {
+      result = {
+        action: name,
         set: set,
         match: result,
-        inputPointer: this.lexer.input.getPointer()
-      });
+        inputPointer: this.lexer.input.getPointer(),
+        callback: callback
+      };
+      result.result = result.callback ?
+        result.callback.apply(result, result.match) :
+        result.match[0];
+      return result.result;
     }
-    this.lexer.input.rollback();
   }
-
-  if (results.length < 1) {
-    return null;
-  } else if (results.length > 1) {
-    throw new Parser.Conflict(results);
-  }
-
-  result = results[0];
-  this.lexer.input.setPointer(result.inputPointer);
-  return result;
+  throw new ParseError();
 };
 
-Parser.prototype.parseSet = function (options, set) {
+Parser.prototype.parseSet = function (set) {
   var results = [],
-      token_i = -1,
-      tok, matched;
+      tok, match, matched;
 
   // Operate within a transaction using the Stream's api
   this.lexer.input.begin();
-  while (match = this.lexer.lex()) {
-    if (options.ignore && util.contains(options.ignore, match.token)) {
-      // ignore this token
-      continue;
-    }
-
+  for (var i = 0, len = set.length; i < len; i++) {
     matched = false;
-    token_i += 1;
-    tok = set[token_i];
+    tok = set[i];
 
-    if (util.type(tok) === '[object Function]') {
-      // Undo last read so it will be passed on to the next parser function.
-      this.lexer.input.undo();
-      var parse = tok;
-      var result = parse.call(this);
-      if (result) {
+    if (util.type(tok) === '[object String]') {
+      var result = this.parseAction(tok);
+      console.log(result);
+      if (result !== undefined) {
         matched = true;
         results.push(result);
       }
-    } else if (tok && match.token === tok) {
-      matched = true;
-      results.push(match);
+    } else {
+      match = this.lexer.lex();
+      if (util.contains(this.ignoreTokens, match.token)) {
+        i -= 1;
+        continue;
+      } if (tok && match.token === tok) {
+        matched = true;
+        results.push(match);
+      }
     }
 
-    if (matched) {
-      // If we have parsed the last token in this set successfully,
-      // return the result.
-      if (token_i === set.length - 1) {
-        this.lexer.input.commit();
-        return results;
-      }
-    } else {
+    if (!matched) {
       break;
     }
   }
-  this.lexer.input.rollback();
-  return null;
-};
 
-Parser.prototype.parseDatum = function () {
-  return this.Expression();
-};
-
-Parser.prototype.List = function () {
-  return this.parse(
-    [lexer.OpenList, lexer.CloseList],
-    [lexer.OpenList, this.ListItems, lexer.CloseList]);
-};
-
-Parser.prototype.ListItems = function () {
-  return this.parse(
-    this.Expression,
-    [this.ListItems, this.Expression]);
-};
-
-Parser.prototype.Expression = function () {
-  return this.parse(
-    lexer.Symbol,
-    lexer.Number,
-    this.List)[0];
-};
-
-
-Parser.Conflict = function (results) {
-  this.results = results;
-  this.message = 'Multiple valid paths for parser: ';
-  for (var i = 0, len = this.results.length; i < len; i++) {
-    var result = this.results[i];
-    this.message += result.set;
+  if (matched) {
+    this.lexer.input.commit();
+    return results;
+  } else {
+    this.lexer.input.rollback();
+    return undefined;
   }
 };
 
-Parser.Conflict.prototype = util.clone(Error.prototype);
-Parser.Conflict.prototype.constructor = Parser.Conflict;
+Parser.prototype.action = function (name/*, actions */) {
+  this.actions[name] = util.slice(arguments, 1);
+  return this;
+};
+
+Parser.prototype.start = function (name) {
+  this.startAction = name;
+  return this;
+};
+
+Parser.prototype.end = function () {
+  this.action.apply(this, [this.endAction].concat(util.slice(arguments)));
+};
+
+Parser.prototype.ignore = function (/* tokens */) {
+  this.ignoreTokens = this.ignoreTokens.concat(util.slice(arguments));
+  return this;
+};
+
+exports.makeParser = function (lex) {
+  return new Parser(lex).
+    ignore(lexer.Whitespace).
+    action('List', [
+      [lexer.OpenList, lexer.CloseList], function () {
+        return null;
+      }
+    ], [
+      [lexer.OpenList, 'ExpressionList', lexer.CloseList], function () {
+        return arguments[1];
+      }
+    ]).
+    action('ExpressionList', [
+      ['Expression', 'ExpressionList'], function (exp, items) {
+        return new datum.Cons(exp, items);
+      }
+    ], [
+      'Expression', function (exp) {
+        return new datum.Cons(exp);
+      }
+    ]).
+    action('Cons', [
+      [lexer.OpenList, 'Expression', lexer.Dot, 'Expression', lexer.CloseList],
+      function (a, left, b, right, c) {
+        return new datum.Cons(left, right);
+      }
+    ]).
+    action('Expression',
+      [lexer.Symbol, function (s) { return new datum.Symbol(s.matchText); }],
+      [lexer.Number, function (n) { return +n.matchText; }],
+      'Cons',
+      'List').
+    start('Expression');
+};
 
 
 exports.read = function (stream) {
-  var toks = [],
-      lex = lexer.makeLexer(stream),
-      parser = new Parser(lex);
-  return parser.parseDatum();
+  var lex = lexer.makeLexer(stream),
+      parser = exports.makeParser(lex);
+  return parser.parse();
 };
 
 exports.readString = function (str) {
-  return exports.read(new util.Stream(str));
-}
-
+  return exports.read(new stream.Stream(str));
+};
 
