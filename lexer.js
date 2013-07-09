@@ -125,8 +125,7 @@ Lexer.Error = function (input) {
   this.input_p = input._p;
   this.message = 'Can\'t lex: "' + this.input.peek() + '"';
 };
-Lexer.Error.prototype = util.clone(Error.prototype);
-Lexer.Error.prototype.constructor = Lexer.Error;
+util.inherits(Lexer.Error, Error);
 
 
 exports.makeLexer = function (input) {

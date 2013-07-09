@@ -9,8 +9,7 @@ function ParseError(message) {
     this.message = this.message + ': ' + message;
   }
 }
-ParseError.prototype = util.clone(Error.prototype);
-ParseError.prototype.constructor = ParseError;
+util.inherits(ParseError, Error);
 ParseError.prototype.message = ParseError.name;
 
 function Parser(lex) {
@@ -19,16 +18,30 @@ function Parser(lex) {
   this.ignoreTokens = [];
   this.endResult;
   this.endAction = '__END__';
-  this.end(lexer.EOF);
+  this.end([lexer.EOF, function (eof) {
+    return eof.token;
+  }]);
 }
 exports.Parser = Parser;
 
 Parser.prototype.parse = function () {
-  if (this.endResult ||
-      (this.endResult = this.parseAction(this.endAction))) {
+  if (this.endResult !== undefined ||
+      (this.endResult = this.tryParseAction(this.endAction)) !== undefined) {
     return this.endResult;
   }
   return this.parseAction(this.startAction);
+};
+
+Parser.prototype.tryParseAction = function (name) {
+  try {
+    return this.parseAction(name);
+  } catch (e) {
+    if (e instanceof ParseError) {
+      return undefined;
+    } else {
+      throw e;
+    }
+  }
 };
 
 Parser.prototype.parseAction = function (name) {
@@ -54,7 +67,7 @@ Parser.prototype.parseAction = function (name) {
       return result.result;
     }
   }
-  throw new ParseError();
+  throw new ParseError(name);
 };
 
 Parser.prototype.parseSet = function (set) {
@@ -68,8 +81,7 @@ Parser.prototype.parseSet = function (set) {
     tok = set[i];
 
     if (util.type(tok) === '[object String]') {
-      var result = this.parseAction(tok);
-      console.log(result);
+      var result = this.tryParseAction(tok);
       if (result !== undefined) {
         matched = true;
         results.push(result);

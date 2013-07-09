@@ -268,3 +268,35 @@ describe('filter', function () {
 describe('reduce', function () {
 
 });
+
+describe('reverse', function () {
+  it('should reverse a list', function () {
+    assert.ok(false);
+  });
+
+  it('should reverse an array', function () {
+    assert.ok(false);
+  });
+
+  it('should reverse an array-like object', function () {
+    assert.ok(false);
+  });
+});
+
+describe('nth', function () {
+  it('should get nth item from a list', function () {
+    var ls = datum.list(1, 2, 3);
+    assert.equal(2, datum.nth(1, ls));
+  });
+
+  it('should get nth item from an array', function () {
+    var a = [1, 2, 3];
+    assert.equal(2, datum.nth(1, a));
+  });
+
+  it('should get nth item from an array-like object', function () {
+    (function () {
+      assert.equal(2, datum.nth(1, arguments));
+    })(1, 2, 3);
+  });
+});

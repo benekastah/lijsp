@@ -36,6 +36,12 @@ exports.clone = Object.create || function (x) {
   return new noop;
 };
 
+exports.inherits = function (Child, Parent) {
+  Child.prototype = exports.clone(Parent.prototype);
+  Child.prototype.constructor = Child;
+  Child.super_ = Parent;
+};
+
 exports.getPrototypeOf = Object.getPrototypeOf || function (o) {
   if (o && '__proto__' in o) {
     return o.__proto__;

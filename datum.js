@@ -14,6 +14,12 @@ Symbol.prototype.escapedName = function () {
   });
 };
 
+function TemplateSymbol(name) {
+  Symbol.call(this, name);
+}
+exports.TemplateSymbol = TemplateSymbol;
+util.inherits(TemplateSymbol, Symbol);
+
 function Cons(left, right) {
   this.left = left;
   this.right = right;
@@ -133,7 +139,7 @@ exports.each = function (fn, ls) {
       }
       node = node.right;
     }
-  } else if (ls && ls.length) {
+  } else if (ls && ls.length != null) {
     for (i = 0, len = ls.length; i < len; i++) {
       result = fn(ls[i]);
       if (result === false) {
@@ -153,7 +159,7 @@ exports.map = function (fn, ls) {
       node = node.right;
       currentResult = currentResult.right = node ? new Cons() : null;
     }
-  } else if (ls && ls.length) {
+  } else if (ls && ls.length != null) {
     result = [];
     for (i = 0, len = ls.length; i < len; i++) {
       result.push(fn(ls[i]));
@@ -168,4 +174,37 @@ exports.filter = function (fn, ls) {
 
 exports.reduce = function (fn, ls) {
 
+};
+
+exports.reverse = function (ls) {
+  var node, result;
+  if (ls instanceof Cons) {
+    node = ls;
+    while (node) {
+      result = new Cons(undefined, result);
+      result.left = node.left;
+      node = node.right;
+    }
+  } else if (ls && ls.length != null) {
+    result = [];
+    for (var i = 0, len = ls.length; i < len; i++) {
+      result.unshift(ls[i]);
+    }
+  }
+  return result;
+};
+
+exports.nth = function (n, ls) {
+  var i, node;
+  if (ls instanceof Cons) {
+    node = ls;
+    i = 0;
+    while (node && i < n) {
+      node = node.right;
+      i += 1;
+    }
+    return node && node.left;
+  } else if (ls) {
+    return ls[n];
+  }
 };

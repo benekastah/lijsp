@@ -3,7 +3,8 @@ var stream = require('./stream'),
     util = require('./util'),
     datum = require('./datum'),
     lexer = require('./lexer'),
-    reader = require('./reader');
+    reader = require('./reader'),
+    undefined;
 
 function NotImplemented(m) {
   if (m) {
@@ -11,9 +12,7 @@ function NotImplemented(m) {
   }
 }
 exports.NotImplemented = NotImplemented;
-
-NotImplemented.prototype = util.clone(Error.prototype);
-NotImplemented.prototype.constructor = NotImplemented;
+util.inherits(NotImplemented, Error);
 NotImplemented.prototype.message = NotImplemented.name;
 
 function Compiler(parser) {
@@ -41,6 +40,8 @@ Compiler.prototype._compile = function (ast) {
         return this.compileCons(ast);
       } else if (ast instanceof datum.Symbol) {
         return this.compileSymbol(ast);
+      } else if (ast instanceof lexer.Token && ast.name === 'EOF') {
+        return undefined;
       }
       return this.compileObject(ast);
 
@@ -76,7 +77,7 @@ Compiler.prototype.compileCons = function (cons) {
       ', ') + ')';
 };
 
-Compiler.prototype.compileObject = function () {
+Compiler.prototype.compileObject = function (obj) {
   throw new NotImplemented('Object');
 };
 

@@ -36,6 +36,33 @@ describe('clone', function () {
   });
 });
 
+describe('inherits', function () {
+  it('should set up basic inheritance for two classes', function () {
+    var A = function () {};
+    A.prototype.a = 5;
+    var B = function () {};
+    util.inherits(B, A);
+    var a = new A;
+    var b = new B;
+    assert.ok(b instanceof A);
+    assert.equal(a.a, b.a);
+  });
+
+  it('should ensure the child classes constructor property refers to the child class', function () {
+    var A = function () {};
+    var B = function () {};
+    util.inherits(B, A);
+    assert.equal(B, B.prototype.constructor);
+  });
+
+  it('should set the child classes super_ property to the parent', function () {
+    var A = function () {};
+    var B = function () {};
+    util.inherits(B, A);
+    assert.equal(A, B.super_);
+  });
+});
+
 describe('getPrototypeOf', function () {
   it('should get the prototype of an object', function () {
     assert.equal(Object.prototype, util.getPrototypeOf({}));

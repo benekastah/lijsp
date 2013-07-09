@@ -106,8 +106,7 @@ function WritableStream(data) {
 }
 exports.WritableStream = WritableStream;
 
-WritableStream.prototype = util.clone(Stream.prototype);
-WritableStream.prototype.constructor = WritableStream;
+util.inherits(WritableStream, Stream);
 
 WritableStream.prototype.set = function (data) {
   var before = '',
