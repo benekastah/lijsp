@@ -130,6 +130,26 @@ Parser.prototype.ignore = function (/* tokens */) {
   return this;
 };
 
+var jsOperators = [
+  // Assignment
+  '=', '+=', '-=', '*=', '/=', '%=',
+  '<<=', '>>=', '>>>=', '&=', '^=', '|=',
+
+  // Arithmetic
+  '+', '-', '*', '/', '%', '++', '--',
+
+  // Bitwise
+  '&', '|', '^', '<<', '>>', '>>>', '~',
+
+  // Comparison
+  '==', '===', '!=', '!==', '<', '>', '<=', '>=',
+
+  // Logical
+  '&&', '||', '!',
+
+  // Special
+  ',', 'delete', 'in', 'instanceof', 'new', 'typeof', 'void'
+];
 exports.makeParser = function (lex) {
   return new Parser(lex).
     ignore(lexer.Whitespace).
@@ -158,6 +178,18 @@ exports.makeParser = function (lex) {
       }
     ]).
     action('Expression',
+      [lexer.JSOperator, function (op) {
+        var opText = op.reMatch[1];
+        if (util.contains(jsOperators, opText)) {
+          return new datum.Operator(opText);
+        } else if (opText === '?:') {
+          return new datum.TernaryOperator();
+        } else if (opText === 'this') {
+          return new datum.ThisOperator();
+        } else {
+          throw 'Unrecognized operator' + op.matchText;
+        }
+      }],
       [lexer.Symbol, function (s) { return new datum.Symbol(s.matchText); }],
       [lexer.Number, function (n) { return +n.matchText; }],
       'Cons',

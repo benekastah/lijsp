@@ -35,8 +35,7 @@ Token.prototype.addPattern = function (p) {
 };
 
 Token.prototype.match = function (input) {
-  var match,
-      matchText;
+  var match, reMatch, matchText;
   for (var i = 0, len = this.patterns.length; i < len; i++) {
     input.begin();
     var p = this.patterns[i],
@@ -45,6 +44,7 @@ Token.prototype.match = function (input) {
     if (t === '[object RegExp]') {
       match = input.getRest().match(p);
       if (match) {
+        reMatch = match;
         matchText = match[0];
         input.undo().movePointer(matchText.length);
       }
@@ -58,7 +58,7 @@ Token.prototype.match = function (input) {
     }
 
     if (matchText != null) {
-      return new TokenMatch(this, matchText, input.commit());
+      return new TokenMatch(this, matchText, input.commit(), reMatch);
     } else {
       input.rollback();
     }
@@ -66,10 +66,11 @@ Token.prototype.match = function (input) {
 };
 
 
-function TokenMatch(token, matchText, pos) {
+function TokenMatch(token, matchText, pos, reMatch) {
   this.token = token;
   this.matchText = matchText;
   this.pos = pos;
+  this.reMatch = reMatch;
 }
 exports.TokenMatch = TokenMatch;
 
@@ -88,6 +89,7 @@ defToken('CloseList', ')');
 defToken('Number', /\d+(\.\d+)?/);
 
 var symbolChars = '\\w\\-+\\|!@%\\^&\\*=:\\?\\/<>\\\\';
+defToken('JSOperator', new RegExp('@<\\s*([' + symbolChars + ']+)\\s*>'));
 defToken('Symbol', new RegExp('[' + symbolChars + ']+'));
 
 defToken('Dot', '.', '·');

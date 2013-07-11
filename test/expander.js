@@ -72,6 +72,36 @@ describe('compare', function () {
         datum.list(3, 2, 1)),
       'simple list fail');
   });
+
+  it('should fail lists that don\'t have the same number of elements', function () {
+    assert.ok(
+      !expander.compare(
+        datum.list(1, 2, 3),
+        datum.list(1, 2, 3, 4)),
+      'length mismatch 1');
+    assert.ok(
+      !expander.compare(
+        datum.list(1, 2, 3),
+        datum.list(1, 2)),
+      'length mismatch 2');
+  });
+
+  it('should be able to gather rest arguments', function () {
+    var match = expander.compare(
+      datum.list(
+        datum.symbol('$a'),
+        datum.symbol('$$rest')),
+      datum.list(1, 2, 3));
+    var a = match[1];
+    var rest = match[2];
+    assert.equal(1, a);
+    assert.equal(2, rest.left);
+    assert.equal(3, rest.right.left);
+  });
+
+  it('should treat allow functions to perform custom compare actions', function () {
+    assert.ok(expander.compare(function () { return true; }, null));
+  });
 });
 
 describe('Expander', function () {
@@ -85,12 +115,7 @@ describe('Expander', function () {
         new datum.Symbol('$a'),
         new datum.Symbol('+'),
         new datum.Symbol('$b')),
-      function (ast) {
-        var node = ast;
-        var a = node.left;
-        node = node.right;
-        node = node.right;
-        var b = node.left;
+      function (ast, a, b) {
         return a + b;
       });
       assert.equal(1, e.expand(new datum.Symbol('one')));

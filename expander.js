@@ -1,9 +1,11 @@
 
 var datum = require('./datum'),
-    util = require('./util');
+    util = require('./util'),
+    assert = require('assert');
 
 function Expander() {
   this.rules = {};
+  this.expandExpanded = true;
 }
 exports.Expander = Expander;
 
@@ -12,28 +14,34 @@ Expander.prototype.defaultRulesetName = 'default';
 Expander.prototype.lateRulesetName = 'late';
 
 Expander.prototype.expand = function (ast) {
-  debugger;
   var names = [this.earlyRulesetName, this.defaultRulesetName,
         this.lateRulesetName],
-      expandedAst;
+      expandedAst = ast;
   for (var i = 0, len = names.length; i < len; i++) {
     expandedAst = this.expandRuleset(names[i], ast);
     if (expandedAst !== ast) {
-      return expandedAst;
+      break;
     }
   }
-  return ast;
+  if (datum.isList(expandedAst)) {
+    // After the original form has been expanded, expand each of its
+    // children.
+    expandedAst = datum.map(util.bind(function (x) {
+      return this.expand(x);
+    }, this), expandedAst);
+  }
+  return expandedAst;
 };
 
 Expander.prototype.expandRuleset = function (setName, ast) {
   var ruleset = this.rules[setName],
-      rule, expandedAst;
+      rule, expandedAst, match;
   if (ruleset) {
     for (var i = 0, len = ruleset.length; i < len; i++) {
       rule = ruleset[i];
-      if (exports.compare(rule.comparator, ast)) {
-        expandedAst = rule.action(ast);
-        return this.expand(expandedAst);
+      if ((match = exports.compare(rule.comparator, ast))) {
+        expandedAst = rule.action.apply(rule, match);
+        return this.expandExpanded ? this.expand(expandedAst) : expandedAst;
       }
     }
   }
@@ -52,11 +60,34 @@ Expander.prototype.addRule = function (comparator, action, setName) {
   return this;
 };
 
-exports.re_templateVariable = /^\$/;
-exports.compare = function (comparator, ast) {
-  var isTemplateVariable = comparator instanceof datum.Symbol &&
-    exports.re_templateVariable.test(comparator.name);
+exports.toTemplateVariable = function (sym) {
+  var result;
+  if (sym instanceof datum.Symbol) {
+    if (exports.re_templateRestVariable.test(sym.name)) {
+      result = new datum.TemplateRestVariable(sym);
+    } else if (exports.re_templateVariable.test(sym.name)) {
+      result = new datum.TemplateVariable(sym);
+    } else if (exports.re_escapedTemplateVariable.test(sym.name)) {
+      result = new datum.Symbol(sym.name.substr(1));
+    }
+  }
+  return result || sym;
+};
 
+exports.re_templateVariable = /^\$/;
+exports.re_templateRestVariable = /^\$\$/;
+exports.re_escapedTemplateVariable = /^\\\$/;
+exports.compare = function (comparator, ast, match) {
+  if (!match) {
+    match = [ast];
+  }
+
+  if (util.type(comparator) === '[object Function]') {
+    return comparator(ast);
+  }
+
+  comparator = exports.toTemplateVariable(comparator);
+  var isTemplateVariable = comparator instanceof datum.TemplateVariable;
   if (!isTemplateVariable) {
     // Ensure each is the same type
     if (util.type(comparator) !== util.type(ast)) {
@@ -68,26 +99,82 @@ exports.compare = function (comparator, ast) {
     }
   }
 
-  if (comparator instanceof datum.Cons) {
-    if (datum.length(comparator) !== datum.length(ast)) {
-      return false;
-    }
+  if (datum.isList(comparator) && datum.isList(ast)) {
     var cNode = comparator,
-        aNode = ast;
-    do {
-      var result = exports.compare(cNode.left, aNode.left);
-      if (!result) {
-        return false;
+        aNode = ast,
+        result;
+
+    while (cNode && aNode) {
+      cNode.left = exports.toTemplateVariable(cNode.left);
+      if (cNode.left instanceof datum.TemplateRestVariable) {
+        match.push(aNode);
+        if (cNode.right) {
+          throw new Error('Can\'t have a rest arg that is not the last argument');
+        }
+        return match;
+      } else {
+        result = exports.compare(cNode.left, aNode.left, match);
+        if (!result) {
+          return false;
+        }
       }
-    } while ((cNode = cNode.right) && (aNode = aNode.right));
-  } else if (comparator instanceof datum.Symbol) {
-    if (!isTemplateVariable &&
-        comparator.name !== ast.name) {
+
+      cNode = cNode.right;
+      aNode = aNode.right;
+    }
+
+    // Check for a length mismatch. Do this after the rest of the checks
+    // so that we can ensure a rest argument can pass through.
+    if (cNode || aNode) {
       return false;
     }
+  } else if (comparator instanceof datum.Symbol ||
+             comparator instanceof datum.Operator) {
+    if (comparator.name !== ast.name) {
+      return false;
+    }
+  } else if (isTemplateVariable) {
+    match.push(ast);
   } else if (comparator !== ast) {
     return false;
   }
 
-  return true;
+  return match;
+};
+
+exports.type = function (t) {
+  var tType = util.type(t);
+  if (tType === '[object String]') {
+    return function (ast) {
+      if (typeof ast  === t || util.type(ast) === t) {
+        return [ast];
+      }
+      return false;
+    };
+  } else if (tType === '[object Function]') {
+    return function (ast) {
+      if (ast instanceof t) {
+        return [ast];
+      }
+      return false;
+    };
+  } else {
+    throw 'Invalid type expression "' + t + '"';
+  }
+};
+
+exports.test = function (f) {
+  assert.ok(util.type(f) === '[object Function]');
+  return function (ast) {
+    if (f(ast)) {
+      return [ast];
+    }
+    return false;
+  };
+};
+
+exports.makeExpander = function () {
+  var e = new Expander();
+  // Here is where the default macros will be set up.
+  return e;
 };

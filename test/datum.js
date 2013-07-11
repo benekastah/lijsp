@@ -270,16 +270,26 @@ describe('reduce', function () {
 });
 
 describe('reverse', function () {
+  var testReverse = function (ls) {
+    var rls = datum.reverse(ls);
+    assert.equal(datum.nth(0, ls), datum.nth(3, rls));
+    assert.equal(datum.nth(1, ls), datum.nth(2, rls));
+    assert.equal(datum.nth(2, ls), datum.nth(1, rls));
+    assert.equal(datum.nth(3, ls), datum.nth(0, rls));
+  };
+
   it('should reverse a list', function () {
-    assert.ok(false);
+    testReverse(datum.list(1, 2, 3, 4));
   });
 
   it('should reverse an array', function () {
-    assert.ok(false);
+    testReverse([1, 2, 3, 4]);
   });
 
   it('should reverse an array-like object', function () {
-    assert.ok(false);
+    (function () {
+      testReverse(arguments);
+    })(1, 2, 3, 4);
   });
 });
 

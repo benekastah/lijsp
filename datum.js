@@ -2,7 +2,7 @@
 var util = require('./util');
 
 function Symbol(name) {
-  this.name = name;
+  this.name = name instanceof Symbol ? name.name : name;
 }
 exports.Symbol = Symbol;
 
@@ -14,11 +14,53 @@ Symbol.prototype.escapedName = function () {
   });
 };
 
-function TemplateSymbol(name) {
-  Symbol.call(this, name);
+exports.symbol = function (name) {
+  return new Symbol(name);
+};
+
+
+function Operator(name) {
+  this.name = name;
 }
-exports.TemplateSymbol = TemplateSymbol;
-util.inherits(TemplateSymbol, Symbol);
+exports.Operator = Operator;
+
+
+function TernaryOperator() {}
+exports.TernaryOperator = TernaryOperator;
+util.inherits(TernaryOperator, Operator);
+
+
+function VoidOperator() {}
+exports.VoidOperator = VoidOperator;
+util.inherits(VoidOperator, Operator);
+
+
+function ThisOperator() {}
+exports.ThisOperator = ThisOperator;
+util.inherits(ThisOperator, Operator);
+
+
+function TemplateVariable(symbol, value) {
+  this.symbol = new Symbol(symbol);
+  this.value = value;
+}
+exports.TemplateVariable = TemplateVariable;
+
+exports.templateVariable = function (symbol, value) {
+  return new TemplateVariable(symbol, value);
+};
+
+
+function TemplateRestVariable(symbol, value) {
+  TemplateVariable.call(this, symbol, value);
+}
+exports.TemplateRestVariable = TemplateRestVariable;
+util.inherits(TemplateRestVariable, TemplateVariable);
+
+exports.templateRestVariable = function (symbol) {
+  return new TemplateRestVariable(symbol);
+};
+
 
 function Cons(left, right) {
   this.left = left;
