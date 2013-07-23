@@ -2,6 +2,22 @@
 var assert = require('assert'),
     util = require('../util');
 
+describe('type', function () {
+  it('should return a basic type string', function () {
+    assert.equal('[object Object]', util.type({}));
+  });
+});
+
+describe('typeIsArrayLike', function () {
+  it('should return true for arrays and arguments objects', function () {
+    assert.ok(util.typeIsArrayLike(util.type([])));
+    (function () {
+      assert.ok(util.typeIsArrayLike(util.type(arguments)));
+    })();
+    assert.ok(!util.typeIsArrayLike(util.type({})));
+  });
+});
+
 describe('asArray', function () {
   it('should return an array with a non-array argument as sole member', function () {
     assert.deepEqual([5], util.asArray(5));

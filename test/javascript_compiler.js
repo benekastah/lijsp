@@ -23,6 +23,7 @@ describe('Compiler', function () {
 
     it('should compile a binary operation', function () {
       var output;
+      debugger;
       output = lijsp.compileString('(@<+> 1 2)');
       assert.equal('(1 + 2);', output.data);
       output = lijsp.compileString('(@<+> 1 2 3)');
@@ -30,7 +31,6 @@ describe('Compiler', function () {
     });
 
     it('should compile a prefix unary operation', function () {
-      debugger;
       var output = lijsp.compileString('(@<new> (A 1))');
       assert.equal('(new A(1));', output.data);
     });

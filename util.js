@@ -4,6 +4,11 @@ exports.type = function (x) {
   return _type.call(x);
 };
 
+exports.typeIsArrayLike = function (typeString) {
+  return typeString === '[object Array]' ||
+    typeString === '[object Arguments]';
+};
+
 var _slice = Array.prototype.slice;
 exports.slice = function (a, start, end) {
   return _slice.call.apply(_slice, arguments);
@@ -28,6 +33,38 @@ exports.indexOf = function (a, x) {
 
 exports.contains = function (a, x) {
   return exports.indexOf(a, x) >= 0;
+};
+
+var _hasGenerators;
+exports.hasGenerators = function () {
+  if (_hasGenerators == null) {
+    try {
+      eval('(function* () {});');
+      _hasGenerators = true;
+    } catch (e) {
+      _hasGenerators = false;
+    }
+  }
+  return _hasGenerators;
+};
+
+exports.allKeys = function (o) {
+  var ks = [];
+  for (var k in o) {
+    ks.push(k);
+  }
+  return ks;
+};
+
+var _hasProp = Object.prototype.hasOwnProperty;
+exports.keys = Object.keys || function () {
+  var ks = [];
+  for (var k in o) {
+    if (_hasProp.call(o, k)) {
+      ks.push(k);
+    }
+  }
+  return ks;
 };
 
 exports.clone = Object.create || function (x) {

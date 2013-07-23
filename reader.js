@@ -187,7 +187,7 @@ exports.makeParser = function (lex) {
         } else if (opText === 'this') {
           return new datum.ThisOperator();
         } else {
-          throw 'Unrecognized operator' + op.matchText;
+          throw 'Unrecognized operator: ' + op.matchText;
         }
       }],
       [lexer.Symbol, function (s) { return new datum.Symbol(s.matchText); }],

@@ -1,5 +1,6 @@
 
-var util = require('./util');
+var util = require('./util'),
+    Iterable = require('./iterable/iterable');
 
 function Symbol(name) {
   this.name = name instanceof Symbol ? name.name : name;
@@ -61,7 +62,6 @@ exports.templateRestVariable = function (symbol) {
   return new TemplateRestVariable(symbol);
 };
 
-
 function Cons(left, right) {
   this.left = left;
   this.right = right;
@@ -90,14 +90,14 @@ exports.isList = function (ls) {
 };
 
 exports.length = function (ls) {
-  var next = ls, result = 0;
-  if (ls instanceof Cons) {
-    while (next) {
-      result += 1;
-      next = next.right;
-    }
-  } else if (ls && ls.length != null) {
+  var result = 0, t = util.type(ls), iter, next;
+  if (util.typeIsArrayLike(t)) {
     result = ls.length;
+  } else {
+    iter = new Iterable(ls);
+    while (!(next = iter.next()).done) {
+      result += 1;
+    }
   }
   return result;
 };
@@ -113,7 +113,7 @@ exports.head = function (ls) {
 exports.first = exports.head;
 
 exports.last = function (ls) {
-  if (ls instanceof Cons) {
+  if (exports.isList(ls)) {
     while (ls) {
       if (!ls.right) {
         return ls.left;
@@ -136,7 +136,7 @@ exports.tail = function (ls) {
 
 exports.init = function (ls) {
   var result, currentResult;
-  if (ls instanceof Cons) {
+  if (exports.isList(ls)) {
     result = currentResult = new Cons();
     while (currentResult) {
       currentResult.left = ls.left;
@@ -170,44 +170,101 @@ exports.join = function (ls, sep) {
   return result;
 };
 
-exports.each = function (fn, ls) {
-  var node, result;
-  if (ls instanceof Cons) {
-    node = ls;
-    while (node) {
-      result = fn(node.left);
-      if (result === false) {
-        return;
-      }
-      node = node.right;
+exports.each = function (fn, opts, ls) {
+  if (arguments.length < 3) {
+    ls = opts;
+    opts = null;
+  }
+  opts || (opts = {});
+  var iter = new Iterable(ls),
+      next, result;
+  while (!(next = iter.next()).done) {
+    if (opts.keys) {
+      result = fn.apply(null, util.asArray(next.value));
+    } else {
+      result = fn(next.value);
     }
-  } else if (ls && ls.length != null) {
-    for (i = 0, len = ls.length; i < len; i++) {
-      result = fn(ls[i]);
-      if (result === false) {
-        return;
-      }
+    if (result === false) {
+      return;
     }
   }
 };
 
-exports.map = function (fn, ls) {
-  var result, currentResult, node;
-  if (ls instanceof Cons) {
-    result = currentResult = new Cons();
-    node = ls;
-    while (node) {
-      currentResult.left = fn(node.left);
-      node = node.right;
-      currentResult = currentResult.right = node ? new Cons() : null;
+function Collection(coll) {
+  var t;
+  this.value = coll;
+  if (exports.isList(coll) || !coll) {
+    this.curValue = this.value;
+    this.add = this._addToList;
+  } else if (util.typeIsArrayLike(t = util.type(coll))) {
+    if (t === '[object Arguments]') {
+      this.value = util.slice(this.value);
     }
-  } else if (ls && ls.length != null) {
-    result = [];
-    for (i = 0, len = ls.length; i < len; i++) {
-      result.push(fn(ls[i]));
-    }
+    this.add = this._addToArray;
+  } else if (t === '[object Object]') {
+    this.add = this._addToObject;
+  } else if (t === '[object String]') {
+    this.add = this._addToString;
+  } else {
+    throw 'unimplemented';
   }
-  return result;
+}
+exports.Collection = Collection;
+
+Collection.prototype._addToList = function (x) {
+  var c = new Cons();
+  c.left = x;
+  if (this.value) {
+    this.curValue = this.curValue.right = c;
+  } else {
+    this.value = this.curValue = c;
+  }
+};
+
+Collection.prototype._addToArray = function (a, b) {
+  if (arguments.length < 2) {
+    this.value.push(a);
+  } else {
+    this.value[a] = b;
+  }
+};
+
+Collection.prototype._addToObject = function (k, v) {
+  this.value[k] = v;
+};
+
+Collection.prototype._addToString = function (s) {
+  this.value += s;
+};
+
+Collection.mimicType = function (c) {
+  var arg, t;
+  if (exports.isList(c)) {
+    arg = null;
+  } else if (util.typeIsArrayLike(t = util.type(c))) {
+    arg = [];
+  } else if (t === '[object Object]') {
+    arg = {};
+  } else if (t === '[object String]') {
+    arg = '';
+  }
+  return new Collection(arg);
+};
+
+exports.map = function (fn, ls) {
+  var result = Collection.mimicType(ls);
+  var listStyle = false;
+  exports.each(function (a, b) {
+    var m;
+    if (listStyle || arguments.length < 2) {
+      listStyle || (listStyle = true);
+      result.add(fn(a));
+    } else {
+      m = fn(a, b);
+      result.add(m[0], m[1]);
+    }
+  }, ls);
+  return result.value;
 };
 
 exports.filter = function (fn, ls) {

@@ -104,7 +104,10 @@ exports.compare = function (comparator, ast, match) {
         aNode = ast,
         result;
 
-    while (cNode && aNode) {
+    while (cNode || aNode) {
+      if (!cNode) {
+        return false;
+      }
       cNode.left = exports.toTemplateVariable(cNode.left);
       if (cNode.left instanceof datum.TemplateRestVariable) {
         match.push(aNode);
@@ -113,20 +116,17 @@ exports.compare = function (comparator, ast, match) {
         }
         return match;
       } else {
+        if (!aNode) {
+          return false;
+        }
         result = exports.compare(cNode.left, aNode.left, match);
         if (!result) {
           return false;
         }
       }
 
-      cNode = cNode.right;
-      aNode = aNode.right;
-    }
-
-    // Check for a length mismatch. Do this after the rest of the checks
-    // so that we can ensure a rest argument can pass through.
-    if (cNode || aNode) {
-      return false;
+      cNode = cNode && cNode.right;
+      aNode = aNode && aNode.right;
     }
   } else if (comparator instanceof datum.Symbol ||
              comparator instanceof datum.Operator) {

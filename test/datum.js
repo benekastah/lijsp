@@ -1,6 +1,7 @@
 
 var assert = require('assert'),
-    datum = require('../datum');
+    datum = require('../datum'),
+    util = require('../util');
 
 describe('Symbol', function () {
   describe('#escapedName', function () {
@@ -218,45 +219,108 @@ describe('each', function () {
   });
 });
 
+var Collection = datum.Collection;
+describe('Collection', function () {
+  describe('.mimicType', function () {
+    it('should be able to mimic lists', function () {
+      var result;
+      var ls = datum.list(1, 2, 3);
+      var coll = Collection.mimicType(ls);
+      result = coll.value;
+      assert.equal(undefined, result);
+      assert.notEqual(ls, result);
+      assert.equal(0, datum.length(result));
+
+      coll.add(1);
+      result = coll.value;
+      assert.equal(datum.isList(ls), datum.isList(result));
+      assert.equal(1, datum.length(result));
+    });
+
+    it('should be able to mimic arrays', function () {
+      var a = [1, 2, 3];
+      result = Collection.mimicType(a).value;
+      assert.equal(util.type(a), util.type(result));
+      assert.notEqual(a, result);
+      assert.equal(0, result.length);
+    });
+
+    it('should be able to mimic objects', function () {
+      var o = {a:1, b:2, c:3};
+      result = Collection.mimicType(o).value;
+      assert.equal(util.type(o), util.type(result));
+      assert.notEqual(o, result);
+      assert.equal(0, util.keys(result).length);
+    });
+  });
+
+  describe('#add', function () {
+    function testListyAdd(ls) {
+      var coll = new Collection(ls);
+      coll.add(2);
+      coll.add(3);
+      assert.equal(3, datum.length(coll.value));
+      assert.equal(2, datum.nth(1, coll.value));
+      assert.equal(3, datum.nth(2, coll.value));
+    }
+
+    function testObjectyAdd(o) {
+      var coll = new Collection(o);
+      coll.add('a', 1);
+      coll.add('b', 2);
+      coll.add(0, 3);
+      assert.equal(1, coll.value.a);
+      assert.equal(2, coll.value.b);
+      assert.equal(3, coll.value[0]);
+    }
+
+    it('should be able to add items to lists', function () {
+      testListyAdd(datum.list(1));
+    });
+
+    it('should be able to add items to arrays', function () {
+      testListyAdd([1]);
+    });
+
+    it('should be able to add items to arrays by index', function () {
+      testObjectyAdd([]);
+    });
+
+    it('should be able to add items to objects', function () {
+      testObjectyAdd({});
+    });
+  });
+});
+
 describe('map', function () {
   var plus1 = function (n) {
     return n + 1;
   };
 
-  it('should be able to map over a list', function () {
-    var ls = datum.list(1, 2, 3, 4);
+  var testList = function (ls) {
     var mls = datum.map(plus1, ls);
-    assert.ok(mls instanceof datum.Cons);
     assert.equal(4, datum.length(mls));
-    var node = mls;
-    assert.equal(2, node.left);
-    node = node.right;
-    assert.equal(3, node.left);
-    node = node.right;
-    assert.equal(4, node.left);
-    node = node.right;
-    assert.equal(5, node.left);
-    node = node.right;
-    assert.ok(!node);
-  });
-
-  var testArr = function (a) {
-    var ma = datum.map(plus1, a);
-    assert.equal(4, ma.length);
-    assert.equal(2, ma[0]);
-    assert.equal(3, ma[1]);
-    assert.equal(4, ma[2]);
-    assert.equal(5, ma[3]);
+    assert.equal(2, datum.nth(0, mls));
+    assert.equal(3, datum.nth(1, mls));
+    assert.equal(4, datum.nth(2, mls));
+    assert.equal(5, datum.nth(3, mls));
+    return mls;
   };
 
+  it('should be able to map over a list', function () {
+    var mls = testList(datum.list(1, 2, 3, 4));
+    assert.ok(mls instanceof datum.Cons);
+  });
+
   it('should be able to map over an array', function () {
-    var a = [1, 2, 3, 4];
-    testArr(a);
+    var ma = testList([1, 2, 3, 4]);
+    assert.ok(ma instanceof Array);
   });
 
   it('should be able to map over an array-like object', function () {
     (function () {
-      testArr(arguments);
+      var ma = testList(arguments);
+      assert.ok(ma instanceof Array);
     })(1, 2, 3, 4);
   });
 });

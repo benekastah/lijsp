@@ -43,7 +43,7 @@ Compiler.prototype.compileAst = function (ast) {
   ast = this.expander.expand(ast);
   compiled = this.expand(ast);
   if (compiled === ast) {
-    throw new CompileError('Can\'t compile: ' + ast);
+    throw new CompileError('Can\'t compile: ' + ast.constructor.name);
   }
   return compiled;
 };
@@ -63,7 +63,7 @@ exports.makeCompiler = function (parser) {
     datum.symbol('$$rest')), function (ast, a, b, rest) {
     var op = ast.left;
     args = new datum.Cons(b, rest);
-    args = new datum.Cons(a, rest);
+    args = new datum.Cons(a, args);
     return '(' + datum.join(
       datum.map(compiler.compileAst, args), ['', op.name, ''].join(' ')) +
       ')';

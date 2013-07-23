@@ -5,9 +5,7 @@ var util = require('./util'),
     reader = require('./reader'),
     lexer = require('./lexer');
 
-debugger;
 exports.compile = function (stream) {
-  debugger;
   var comp = compiler.makeCompiler(
     reader.makeParser(
       lexer.makeLexer(stream)));
