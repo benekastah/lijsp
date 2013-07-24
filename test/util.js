@@ -94,3 +94,4 @@ describe('bind', function () {
     assert.equal(4, util.bind(add, {c: 2}, 1)(1));
   });
 });
+

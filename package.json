@@ -1,0 +1,32 @@
+{
+  "name": "lijsp",
+  "version": "0.0.0",
+  "description": "A lisp to js compile we can all not give a shit about",
+  "main": "lijsp.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "mocha -C && mocha -C --harmony"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/benekastah/lijsp.git"
+  },
+  "keywords": [
+    "lisp",
+    "compiler",
+    "lexer",
+    "language",
+    "functional",
+    "programming"
+  ],
+  "author": "Paul Harper <benekastah@gmail.com>",
+  "license": "BSD",
+  "bugs": {
+    "url": "https://github.com/benekastah/lijsp/issues"
+  },
+  "devDependencies": {
+    "mocha": "~1.12.0"
+  }
+}

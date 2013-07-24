@@ -325,6 +325,57 @@ describe('map', function () {
   });
 });
 
+describe('concat', function () {
+  var test = function (a, b, c) {
+    var ls = datum.concat(a, b, c);
+    assert.equal(1, datum.nth(0, ls));
+    assert.equal(2, datum.nth(1, ls));
+    assert.equal(3, datum.nth(2, ls));
+    assert.equal(4, datum.nth(3, ls));
+    assert.equal(5, datum.nth(4, ls));
+    assert.equal(6, datum.nth(5, ls));
+    assert.equal(6, datum.length(ls));
+    return ls;
+  };
+
+  it('should be able to concatenate lists', function () {
+    var ls = test(datum.list(1, 2), datum.list(3, 4), datum.list(5, 6));
+    assert.ok(ls instanceof datum.Cons);
+  });
+
+  it('should be able to concatenate arrays', function () {
+    var ls = test([1, 2], [3, 4], [5, 6]);
+    assert.ok(ls instanceof Array);
+  });
+
+  it('should be able to concatenate arguments objects', function () {
+    (function () {
+      var a = arguments;
+      (function () {
+        var b = arguments;
+        (function () {
+          var c = arguments;
+          var ls = test(a, b, c);
+          assert.ok(ls instanceof Array);
+        })(5, 6);
+      })(3, 4);
+    })(1, 2);
+  });
+
+  it('should be able to concatenate objects', function () {
+    var obj = datum.concat({a: 1}, {b: 2, c: 3}, {c: 4});
+    assert.equal(obj.a, 1);
+    assert.equal(obj.b, 2);
+    assert.equal(obj.c, 4);
+    assert.equal(3, util.keys(obj).length);
+  });
+
+  it('should be able to concatenate strings', function () {
+    var s = datum.concat('asdf', 'fdsa', 'gzip');
+    assert.equal(s, 'asdffdsagzip');
+  });
+});
+
 describe('filter', function () {
 
 });

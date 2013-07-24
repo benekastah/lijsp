@@ -176,7 +176,7 @@ exports.each = function (fn, opts, ls) {
     opts = null;
   }
   opts || (opts = {});
-  var iter = new Iterable(ls),
+  var iter = new Iterable(ls, opts),
       next, result;
   while (!(next = iter.next()).done) {
     if (opts.keys) {
@@ -193,7 +193,7 @@ exports.each = function (fn, opts, ls) {
 function Collection(coll) {
   var t;
   this.value = coll;
-  if (exports.isList(coll) || !coll) {
+  if (exports.isList(coll) || this.value == null) {
     this.curValue = this.value;
     this.add = this._addToList;
   } else if (util.typeIsArrayLike(t = util.type(coll))) {
@@ -267,12 +267,62 @@ exports.map = function (fn, ls) {
   return result.value;
 };
 
-exports.filter = function (fn, ls) {
-
+exports.concat = function (ls) {
+  var rest = util.slice(arguments);
+  var coll = Collection.mimicType(ls);
+  exports.each(function (ls) {
+    exports.each(function () {
+      coll.add.apply(coll, arguments);
+    }, ls);
+  }, rest);
+  return coll.value;
 };
 
-exports.reduce = function (fn, ls) {
+exports.filter = function (fn, ls) {
+  var coll = Collection.mimicType(ls);
+  exports.each(function (x) {
+    fn(x) && coll.add(x);
+  }, ls);
+  return coll.value;
+};
 
+function ReduceError(m) {
+  this.message = ReduceError.name + ': ' + m;
+}
+exports.ReduceError = ReduceError;
+util.inherits(ReduceError, Error);
+
+var _reduce = function (fn, curval, ls, opts) {
+  var curvalDefined = arguments.length >= 3;
+  if (!curvalDefined) {
+    ls = curval;
+    curval = null;
+  }
+  exports.each(function (x) {
+    if (!curvalDefined) {
+      curval = x;
+      curvalDefined = true;
+    } else {
+      curval = fn(curval, x);
+    }
+  }, opts, ls);
+  if (!curvalDefined) {
+    throw new ReduceError('curval must be defined when reducing an ' +
+                          'empty list.');
+  }
+  return curval;
+};
+
+exports.reduceLeft = function (fn, curval, ls) {
+  return _reduce.apply(this, arguments);
+};
+
+exports.reduce = exports.reduceLeft;
+
+exports.reduceRight = function (fn, curval, ls) {
+  var args = util.slice(arguments);
+  args.push({reverse: true});
+  return _reduce.apply(this, args);
 };
 
 exports.reverse = function (ls) {
