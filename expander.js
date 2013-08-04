@@ -74,6 +74,29 @@ exports.toTemplateVariable = function (sym) {
   return result || sym;
 };
 
+exports.isTemplateVariable = function (x) {
+  return exports.toTemplateVariable(x) instanceof datum.TemplateVariable;
+};
+
+var _getTemplateVariables = function (pattern) {
+  if (datum.isList(pattern)) {
+    return datum.filter(exports.isTemplateVariable, pattern);
+  } else if (exports.isTemplateVariable(pattern)) {
+    return pattern;
+  }
+};
+
+exports.getTemplateVariables = function (pattern) {
+  var result = _getTemplateVariables(pattern);
+  if (!datum.isList(result)) {
+    return datum.list(result);
+  } else if (result) {
+    return result;
+  } else {
+    return datum.list();
+  }
+};
+
 exports.re_templateVariable = /^\$/;
 exports.re_templateRestVariable = /^\$\$/;
 exports.re_escapedTemplateVariable = /^\\\$/;
@@ -175,6 +198,56 @@ exports.test = function (f) {
 
 exports.makeExpander = function () {
   var e = new Expander();
-  // Here is where the default macros will be set up.
+
+  e.addRule(datum.list(
+    datum.symbol('defsyntax'),
+    datum.symbol('$pattern'),
+    datum.symbol('$$body')), function (ast, pattern, body) {
+      var args = exports.getTemplateVariables(pattern);
+      var lambda = datum.list(datum.symbol('lambda'), args, body);
+      var fn = eval('(' + e.compiler.compileAst(lambda) + ')');
+      e.addRule(pattern, fn);
+      return null;
+    });
+
+  e.addRule(datum.list(
+    datum.symbol('lambda'),
+    datum.symbol('$args'),
+    datum.symbol('$$body')), function (ast, args, body) {
+      var ret = datum.last(body);
+      body = datum.concat(
+        datum.init(body),
+        datum.list(
+          datum.list(new datum.ReturnOperator(), ret)));
+      return datum.list(new datum.FunctionOperator(), args, body);
+    });
+
+  e.addRule(datum.list(
+    datum.symbol('def'),
+    datum.symbol('$a'),
+    datum.symbol('$b')), function (ast, a, b) {
+      if (datum.isList(a)) {
+        var lambda = datum.list(datum.symbol('lambda'), a.right, b);
+        return datum.list(datum.symbol('def'), a.left, lambda);
+      } else {
+        return datum.list(new datum.VarOperator(), new datum.list(a, b));
+      }
+    });
+
+  e.addRule(datum.list(
+    datum.symbol('quote'),
+    datum.symbol('$expr')), function (ast, expr) {
+      if (datum.isList(expr)) {
+        return datum.apply(datum.list, datum.symbol('list'), expr);
+      } else if (expr instanceof datum.Symbol) {
+        return datum.list(
+          new datum.Operator('new'),
+          datum.list(
+            datum.symbol('Symbol'),
+            expr.name));
+      }
+      return expr;
+    });
+
   return e;
 };

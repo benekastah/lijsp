@@ -1,0 +1,93 @@
+#!/usr/bin/env node --harmony
+
+var repl = require('repl'),
+    colors = require('colors'),
+    ArgumentParser = require('argparse').ArgumentParser,
+    fs = require('fs'),
+    pjson = require('../package.json'),
+    lijsp = require('../lijsp');
+
+var argparser = new ArgumentParser({
+  version: pjson.version,
+  addHelp: true,
+  description: 'lijsp repl'
+});
+argparser.addArgument(['-l', '--historyLength'], {
+  help: 'How many history entries to store',
+  defaultValue: 200,
+  type: Number
+});
+argparser.addArgument(['-p', '--historyPersist'], {
+  help: 'Where to persist repl history',
+  defaultValue: '.lijsp_repl_history.json'
+});
+argparser.addArgument(['-c', '--showCode'], {
+  help: 'Whether or not to print the generated code rather than the ' +
+    'eval\'d result',
+  defaultValue: false,
+  action: 'storeTrue'
+});
+argparser.addArgument(['-a', '--ast'], {
+  help: 'Whether or not to print the ast rather than the eval\'d result',
+  defaultValue: false,
+  action: 'storeTrue'
+});
+
+var args = argparser.parseArgs();
+
+var commands = {
+  // exit: function () {
+  //   repl.close();
+  // }
+};
+
+var lines = [];
+if (args.historyPersist) {
+  try {
+    lines = require(args.historyPersist);
+  } catch (e) {}
+}
+lines.maxLength = args.historyLength;
+lines.addLine = function (line) {
+  this.push(line);
+  while (this.length >= this.maxLength) {
+    this.shift();
+  }
+  return this;
+};
+lines.last = function () {
+  return this[this.length - 1];
+};
+
+var evalLine = function* () {
+  while (1) {
+    try {
+      var result = lijsp.compileString(lines.last());
+      var val = args.showCode ? result.data : eval(result.data);
+      yield {value: val};
+    } catch (e) {
+      yield {error: e};
+    }
+  }
+}();
+
+var repl = repl.start({
+  input: process.stdin,
+  output: process.stdout,
+  prompt: 'lijsp> '.yellow,
+  eval: function (line, context, filename, callback) {
+    line = line.substr(1, line.length - 2).trim();
+    lines.addLine(line);
+    var result = evalLine.next().value;
+    callback(result.error, result.value);
+  }
+});
+
+repl.rli.history = lines;
+
+repl.on('exit', function () {
+  if (args.historyPersist) {
+    fs.writeFileSync(args.historyPersist, JSON.stringify(lines));
+  }
+  process.exit(0);
+});

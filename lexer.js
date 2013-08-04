@@ -86,13 +86,18 @@ var defToken = function (name) {
 
 defToken('OpenList', '(');
 defToken('CloseList', ')');
-defToken('Number', /\d+(\.\d+)?/);
+defToken('Number', /\-?\d+(\.\d+)?/);
 
-var symbolChars = '\\w\\-+\\|!@%\\^&\\*=:\\?\\/<>\\\\';
-defToken('JSOperator', new RegExp('@<\\s*([' + symbolChars + ']+)\\s*>'));
-defToken('Symbol', new RegExp('[' + symbolChars + ']+'));
+defToken('Quote', '\'');
+defToken('QuasiQuote', '`');
+defToken('Unquote', ',');
+defToken('UnquoteSplicing', ',@');
 
 defToken('Dot', '.', '·');
+
+var symbolChars = '\\w\\-+\\|\$!@%\\^&\\*=:\\?\\/<>\\\\~';
+defToken('JSOperator', new RegExp('@<\\s*([' + symbolChars + ']+)\\s*>'));
+defToken('Symbol', new RegExp('[' + symbolChars + ']+'));
 
 defToken('Whitespace', /\s+/);
 

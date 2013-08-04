@@ -28,17 +28,50 @@ exports.Operator = Operator;
 
 function TernaryOperator() {}
 exports.TernaryOperator = TernaryOperator;
-util.inherits(TernaryOperator, Operator);
 
 
 function VoidOperator() {}
 exports.VoidOperator = VoidOperator;
-util.inherits(VoidOperator, Operator);
 
 
 function ThisOperator() {}
 exports.ThisOperator = ThisOperator;
-util.inherits(ThisOperator, Operator);
+
+
+function VarOperator() {}
+exports.VarOperator = VarOperator;
+
+
+function FunctionOperator() {}
+exports.FunctionOperator = FunctionOperator;
+
+
+function ReturnOperator() {}
+exports.ReturnOperator = ReturnOperator;
+
+
+function Quoted(x) {
+  this.x = x;
+}
+exports.Quoted = Quoted;
+
+
+function QuasiQuoted(x) {
+  this.x = x;
+}
+exports.QuasiQuoted = QuasiQuoted;
+
+
+function Unquoted(x) {
+  this.x = x;
+}
+exports.Unquoted = Unquoted;
+
+
+function UnquotedSplicing(x) {
+  this.x = x;
+}
+exports.UnquotedSplicing = UnquotedSplicing;
 
 
 function TemplateVariable(symbol, value) {
@@ -80,7 +113,17 @@ exports.list = function () {
   return result;
 };
 
+exports.apply = function (fn) {
+  var freeArgs = util.slice(arguments, 1, -1);
+  var ls = exports.last(arguments);
+  var args = exports.concat(freeArgs, ls);
+  return fn.apply(this, args);
+};
+
 exports.isList = function (ls) {
+  if (ls === null) {
+    return true;
+  }
   var result = !!ls;
   while (result && ls) {
     result = ls instanceof Cons;
@@ -135,12 +178,16 @@ exports.tail = function (ls) {
 };
 
 exports.init = function (ls) {
+  if (ls === null) {
+    return null;
+  }
   var result, currentResult;
-  if (exports.isList(ls)) {
+  if (exports.isList(ls) && ls.right) {
     result = currentResult = new Cons();
     while (currentResult) {
       currentResult.left = ls.left;
-      currentResult = currentResult.right = ls.right.right ? new Cons() : null;
+      currentResult = currentResult.right =
+        ls.right && ls.right.right ? new Cons() : null;
       ls = ls.right;
     }
   } else if (ls) {

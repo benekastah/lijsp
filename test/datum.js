@@ -37,14 +37,43 @@ describe('list', function () {
       node = node.right;
     }
   });
+
+  it('should return null with zero arguments', function () {
+    var ls = datum.list();
+    assert.equal(null, ls);
+  });
+});
+
+describe('apply', function () {
+  var fn = function () {
+    return util.slice(arguments);
+  };
+
+  var test = function () {
+    var args = util.slice(arguments);
+    args.unshift(fn);
+    var result = datum.apply.apply(null, args);
+    assert.equal(4, result.length);
+    assert.equal(1, result[0]);
+    assert.equal(2, result[1]);
+    assert.equal(3, result[2]);
+    assert.equal(4, result[3]);
+  };
+
+  it('should be able to build a function call', function () {
+    test(1, 2, [3, 4]);
+    test(1, 2, datum.list(3, 4));
+    test([1, 2, 3, 4]);
+    test(datum.list(1, 2, 3, 4));
+  });
 });
 
 describe('isList', function () {
   it('should be able to determine if an object is a list', function () {
     assert.ok(datum.isList(new datum.Cons(1)), 'a cons cell with a null right value is a list');
     assert.ok(datum.isList(datum.list(1, 2, 3, 4, 5)), 'a list built with `list` is a list');
+    assert.ok(datum.isList(null), 'null values are empty lists');
     assert.ok(!datum.isList(new datum.Cons(1, 2)), 'an ordinary cons cell is not a list');
-    assert.ok(!datum.isList(null), 'null values aren\'t lists');
     assert.ok(!datum.isList([]), 'arrays aren\'t lists');
   });
 });
@@ -72,17 +101,22 @@ describe('first', function () {
   it('should get the first item from a list', function () {
     var ls = datum.list(1, 2, 3, 4);
     assert.equal(1, datum.first(ls));
+    assert.equal(undefined, datum.first(null));
   });
 
   it('should get the first item from an array', function () {
     var a = [1, 2, 3, 4];
     assert.equal(1, datum.first(a));
+    assert.equal(undefined, datum.first([]));
   });
 
   it('should get the first item from an array-like object', function () {
     (function () {
       assert.equal(1, datum.first(arguments));
     })(1, 2, 3, 4);
+    (function () {
+      assert.equal(undefined, datum.first(arguments));
+    })();
   });
 });
 
@@ -90,78 +124,116 @@ describe('last', function () {
   it('should get the last item from a list', function () {
     var ls = datum.list(1, 2, 3, 4);
     assert.equal(4, datum.last(ls));
+    assert.equal(undefined, datum.last(null));
   });
 
   it('should get the last item from an array', function () {
     var a = [1, 2, 3, 4];
     assert.equal(4, datum.last(a));
+    assert.equal(undefined, datum.last([]));
   });
 
   it('should get the last item from an array-like object', function () {
     (function () {
       assert.equal(4, datum.last(arguments));
     })(1, 2, 3, 4);
+    (function () {
+      assert.equal(undefined, datum.last(arguments));
+    })();
   });
 });
 
 describe('tail', function () {
+  var testList = function (a) {
+    var tl = datum.tail(a);
+    assert.equal(3, datum.length(tl));
+    assert.equal(2, datum.nth(0, tl));
+    assert.equal(3, datum.nth(1, tl));
+    assert.equal(4, datum.nth(2, tl));
+  };
+
+  var testSingleItemList = function (ls) {
+    var it = datum.init(ls);
+    assert.equal(0, datum.length(it));
+  };
+
+  var testEmptyList = function (ls) {
+    var tl = datum.tail(ls);
+    assert.equal(0, datum.length(tl));
+    return tl;
+  };
+
   it('should get the tail of a list', function () {
     var ls = datum.list(1, 2, 3, 4);
     assert.equal(ls.right, datum.tail(ls));
+    testList(ls);
+    var it = testEmptyList(null);
+    assert.equal(null, it);
+    testSingleItemList(datum.list(1));
   });
 
-  var testArr = function (a) {
-    var tl = datum.tail(a);
-    assert.equal(3, tl.length);
-    assert.equal(2, tl[0]);
-    assert.equal(3, tl[1]);
-    assert.equal(4, tl[2]);
-  };
-
   it('should get the tail of an array', function () {
-    var a = [1, 2, 3, 4];
-    testArr(a);
+    testList([1, 2, 3, 4]);
+    testEmptyList([]);
+    testSingleItemList([1]);
   });
 
   it('should get the tail of an array-like object', function () {
     (function () {
-      testArr(arguments);
+      testList(arguments);
     })(1, 2, 3, 4);
+    (function () {
+      testEmptyList(arguments);
+    })();
+    (function () {
+      testSingleItemList(arguments);
+    })(1);
   });
 });
 
 describe('init', function () {
-  it('should get the init of a list', function () {
-    var ls = datum.list(1, 2, 3, 4);
-    var it = datum.init(ls);
-    assert.equal(3, datum.length(it));
-    var node = it;
-    assert.equal(1, node.left);
-    node = node.right;
-    assert.equal(2, node.left);
-    node = node.right;
-    assert.equal(3, node.left);
-    node = node.right;
-    assert.ok(!node);
-  });
-
-  var testArr = function (a) {
+  var testList = function (a) {
     var it = datum.init(a);
-    assert.equal(3, it.length);
-    assert.equal(1, it[0]);
-    assert.equal(2, it[1]);
-    assert.equal(3, it[2]);
+    assert.equal(3, datum.length(it));
+    assert.equal(1, datum.nth(0, it));
+    assert.equal(2, datum.nth(1, it));
+    assert.equal(3, datum.nth(2, it));
   };
 
+  var testSingleItemList = function (ls) {
+    var it = datum.init(ls);
+    assert.equal(0, datum.length(it));
+  };
+
+  var testEmptyList = function (ls) {
+    var it = datum.init(ls);
+    assert.equal(0, datum.length(it));
+    return it;
+  };
+
+  it('should get the init of a list', function () {
+    testList(datum.list(1, 2, 3, 4));
+    var it = testEmptyList(null);
+    assert.equal(null, it);
+    testSingleItemList(datum.list(1));
+  });
+
   it('should get the init of an array', function () {
-    var a = [1, 2, 3, 4];
-    testArr(a);
+    testList([1, 2, 3, 4]);
+    testEmptyList([]);
+    testSingleItemList([1]);
   });
 
   it('should get the init of an array-like object', function () {
     (function () {
-      testArr(arguments);
+      testList(arguments);
     })(1, 2, 3, 4);
+    (function () {
+      testEmptyList(arguments);
+    })();
+    (function () {
+      testSingleItemList(arguments);
+    })(1);
   });
 });
 
@@ -377,7 +449,13 @@ describe('concat', function () {
 });
 
 describe('filter', function () {
-
+  it('should be able to filter lists', function () {
+    var ls = datum.filter(function (x) {
+      return x > 5;
+    }, datum.list(3, 4, 5, 6, 7));
+    assert.equal(6, datum.nth(0, ls));
+    assert.equal(7, datum.nth(1, ls));
+  });
 });
 
 describe('reduce', function () {

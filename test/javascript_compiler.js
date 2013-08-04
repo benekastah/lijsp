@@ -39,5 +39,35 @@ describe('Compiler', function () {
       var output = lijsp.compileString('(a @<++>)');
       assert.equal('(a ++);', output.data);
     });
+
+    it('should compile this', function () {
+      var output = lijsp.compileString('@<this>');
+      assert.equal('this;', output.data);
+      output = lijsp.compileString('(a @<this>)');
+      assert.equal('a(this);', output.data);
+    });
+
+    it('should compile void', function () {
+      var output = lijsp.compileString('@<void>');
+      assert.equal('void(0);', output.data);
+      output = lijsp.compileString('(a @<void>)');
+      assert.equal('a(void(0));', output.data);
+    });
+
+    it('should compile a var statement', function () {
+      var output = lijsp.compileString('(@<var> a b c)');
+      assert.equal('var a, b, c;', output.data);
+      output = lijsp.compileString('(@<var> (a 1) b (c 3))');
+      assert.equal('var a = 1, b, c = 3;', output.data);
+    });
+
+    it('should compile a function statement', function () {
+      var output = lijsp.compileString('(@<function> (a b) ((@<+> a b)))');
+      assert.equal('function (a, b) { (a + b); };', output.data);
+      output = lijsp.compileString('(@<function> () ())');
+      assert.equal('function () {  };', output.data);
+      output = lijsp.compileString('(@<function> asdf () (asdf))');
+      assert.equal('function asdf() { asdf; };', output.data);
+    });
   });
 });

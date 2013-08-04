@@ -148,7 +148,7 @@ var jsOperators = [
   '&&', '||', '!',
 
   // Special
-  ',', 'delete', 'in', 'instanceof', 'new', 'typeof', 'void'
+  ',', 'delete', 'in', 'instanceof', 'new', 'typeof'
 ];
 exports.makeParser = function (lex) {
   return new Parser(lex).
@@ -177,6 +177,23 @@ exports.makeParser = function (lex) {
         return new datum.Cons(left, right);
       }
     ]).
+    action('Quote', [
+      [lexer.Quote, 'Expression'], function (__, expr) {
+        return datum.list(datum.symbol('quote'), expr);
+      }
+    ], [
+      [lexer.QuasiQuote, 'Expression'], function (__, expr) {
+        return datum.list(datum.symbol('quasiquote'), expr);
+      }
+    ], [
+      [lexer.Unquote, 'Expression'], function (__, expr) {
+        return datum.list(datum.symbol('unquote'), expr);
+      }
+    ], [
+      [lexer.UnquoteSplicing, 'Expression'], function (__, expr) {
+        return datum.list(datum.symbol('unquote-splicing'), expr);
+      }
+    ]).
     action('Expression',
       [lexer.JSOperator, function (op) {
         var opText = op.reMatch[1];
@@ -184,8 +201,16 @@ exports.makeParser = function (lex) {
           return new datum.Operator(opText);
         } else if (opText === '?:') {
           return new datum.TernaryOperator();
+        } else if (opText === 'void') {
+          return new datum.VoidOperator();
         } else if (opText === 'this') {
           return new datum.ThisOperator();
+        } else if (opText === 'var') {
+          return new datum.VarOperator();
+        } else if (opText === 'function') {
+          return new datum.FunctionOperator();
+        } else if (opText === 'return') {
+          return new datum.ReturnOperator();
         } else {
           throw 'Unrecognized operator: ' + op.matchText;
         }
@@ -193,7 +218,8 @@ exports.makeParser = function (lex) {
       [lexer.Symbol, function (s) { return new datum.Symbol(s.matchText); }],
       [lexer.Number, function (n) { return +n.matchText; }],
       'Cons',
-      'List').
+      'List',
+      'Quote').
     start('Expression');
 };
 
