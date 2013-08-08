@@ -18,7 +18,7 @@ describe('Compiler', function () {
 
     it('should compile a pair as a cons cell', function () {
       var output = lijsp.compileString('(1 . 2)');
-      assert.equal('new Cons(1, 2);', output.data);
+      assert.equal('cons(1, 2);', output.data);
     });
 
     it('should compile a binary operation', function () {
@@ -68,6 +68,11 @@ describe('Compiler', function () {
       assert.equal('function () {  };', output.data);
       output = lijsp.compileString('(@<function> asdf () (asdf))');
       assert.equal('function asdf() { asdf; };', output.data);
+    });
+
+    it('should compile property access', function () {
+      var output = lijsp.compileString('(@<.> a \'b c)');
+      assert.equal('a.b[c];', output.data);
     });
   });
 });

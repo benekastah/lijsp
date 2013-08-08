@@ -1,93 +1,76 @@
 #!/usr/bin/env node --harmony
 
-var repl = require('repl'),
-    colors = require('colors'),
-    ArgumentParser = require('argparse').ArgumentParser,
-    fs = require('fs'),
+var ArgumentParser = require('argparse').ArgumentParser,
     pjson = require('../package.json'),
-    lijsp = require('../lijsp');
+    path = require('path');
 
 var argparser = new ArgumentParser({
   version: pjson.version,
   addHelp: true,
-  description: 'lijsp repl'
+  description: 'lijsp base command'
 });
-argparser.addArgument(['-l', '--historyLength'], {
+argparser.addArgument(['--verbose'], {
+  help: 'Print verbose debug information',
+  action: 'storeTrue'
+});
+
+var subparsers = argparser.addSubparsers({
+  title:'subcommands',
+  dest:"subcommand_name"
+});
+
+var replParser = subparsers.addParser('repl', {
+  addHelp: true
+});
+replParser.addArgument(['-l', '--historyLength'], {
   help: 'How many history entries to store',
   defaultValue: 200,
   type: Number
 });
-argparser.addArgument(['-p', '--historyPersist'], {
+replParser.addArgument(['-p', '--historyPersist'], {
   help: 'Where to persist repl history',
   defaultValue: '.lijsp_repl_history.json'
 });
-argparser.addArgument(['-c', '--showCode'], {
+replParser.addArgument(['-c', '--showCode'], {
   help: 'Whether or not to print the generated code rather than the ' +
     'eval\'d result',
   defaultValue: false,
   action: 'storeTrue'
 });
-argparser.addArgument(['-a', '--ast'], {
+replParser.addArgument(['-a', '--ast'], {
   help: 'Whether or not to print the ast rather than the eval\'d result',
   defaultValue: false,
   action: 'storeTrue'
 });
 
+var compileParser = subparsers.addParser('compile', {
+  addHelp: true
+});
+compileParser.addArgument(['-f', '--files'], {
+  help: 'Enumerate the files to compile',
+  defaultValue: [],
+  nargs: '*'
+});
+compileParser.addArgument(['-o', '--outfile'], {
+  help: 'The path of the compiler output'
+});
+compileParser.addArgument(['-i', '--indentLevel'], {
+  help: 'The indent level of the generated javascript code',
+  defaultValue: 2
+});
+
 var args = argparser.parseArgs();
-
-var commands = {
-  // exit: function () {
-  //   repl.close();
-  // }
-};
-
-var lines = [];
-if (args.historyPersist) {
-  try {
-    lines = require(args.historyPersist);
-  } catch (e) {}
+if (args.verbose) {
+  console.log('Parsed args:');
+  console.dir(args);
 }
-lines.maxLength = args.historyLength;
-lines.addLine = function (line) {
-  this.push(line);
-  while (this.length >= this.maxLength) {
-    this.shift();
-  }
-  return this;
-};
-lines.last = function () {
-  return this[this.length - 1];
+
+var execSubcommand = function (args) {
+  var cmdModulePath = path.join('../commands/', args.subcommand_name);
+  args.verbose && console.log('Requiring subcommand module:', cmdModulePath);
+  var cmdModule = require(cmdModulePath);
+  args.verbose && console.log('Calling subcommand module\'s `execute` function');
+  cmdModule.execute(args);
 };
 
-var evalLine = function* () {
-  while (1) {
-    try {
-      var result = lijsp.compileString(lines.last());
-      var val = args.showCode ? result.data : eval(result.data);
-      yield {value: val};
-    } catch (e) {
-      yield {error: e};
-    }
-  }
-}();
-
-var repl = repl.start({
-  input: process.stdin,
-  output: process.stdout,
-  prompt: 'lijsp> '.yellow,
-  eval: function (line, context, filename, callback) {
-    line = line.substr(1, line.length - 2).trim();
-    lines.addLine(line);
-    var result = evalLine.next().value;
-    callback(result.error, result.value);
-  }
-});
-
-repl.rli.history = lines;
-
-repl.on('exit', function () {
-  if (args.historyPersist) {
-    fs.writeFileSync(args.historyPersist, JSON.stringify(lines));
-  }
-  process.exit(0);
-});
+execSubcommand(args);

@@ -7,7 +7,7 @@
     "test": "test"
   },
   "scripts": {
-    "test": "mocha -C && mocha -C --harmony"
+    "test": "mocha && mocha --harmony"
   },
   "repository": {
     "type": "git",
@@ -32,5 +32,8 @@
   "dependencies": {
     "colors": "~0.6.1",
     "argparse": "~0.1.15"
+  },
+  "optionalDependencies": {
+    "uglify-js": "~2.3.0"
   }
 }

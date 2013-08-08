@@ -204,7 +204,9 @@ exports.makeExpander = function () {
     datum.symbol('$pattern'),
     datum.symbol('$$body')), function (ast, pattern, body) {
       var args = exports.getTemplateVariables(pattern);
-      var lambda = datum.list(datum.symbol('lambda'), args, body);
+      var lambda = datum.concat(
+        datum.list(datum.symbol('lambda'), args),
+        body);
       var fn = eval('(' + e.compiler.compileAst(lambda) + ')');
       e.addRule(pattern, fn);
       return null;
@@ -219,34 +221,68 @@ exports.makeExpander = function () {
         datum.init(body),
         datum.list(
           datum.list(new datum.ReturnOperator(), ret)));
+
       return datum.list(new datum.FunctionOperator(), args, body);
     });
 
   e.addRule(datum.list(
     datum.symbol('def'),
     datum.symbol('$a'),
-    datum.symbol('$b')), function (ast, a, b) {
+    datum.symbol('$$b')), function (ast, a, b) {
       if (datum.isList(a)) {
-        var lambda = datum.list(datum.symbol('lambda'), a.right, b);
+        var lambda = datum.concat(
+          datum.list(datum.symbol('lambda'), a.right),
+          b);
         return datum.list(datum.symbol('def'), a.left, lambda);
       } else {
-        return datum.list(new datum.VarOperator(), new datum.list(a, b));
+        return datum.list(
+          new datum.VarOperator(),
+          datum.list(
+            a, datum.list(
+              new datum.Operator('='),
+              datum.list(
+                new datum.PropertyAccessOperator(),
+                datum.symbol('exports'),
+                datum.list(datum.symbol('quote'), a)),
+              b.left)));
       }
     });
 
   e.addRule(datum.list(
-    datum.symbol('quote'),
-    datum.symbol('$expr')), function (ast, expr) {
-      if (datum.isList(expr)) {
-        return datum.apply(datum.list, datum.symbol('list'), expr);
-      } else if (expr instanceof datum.Symbol) {
+    datum.symbol('use-from'),
+    datum.symbol('$obj'),
+    datum.symbol('$$imports')), function (ast, obj, imports) {
+      var result = datum.map(function (impt) {
+        var name1, name2;
+        if (impt instanceof datum.Symbol) {
+          name1 = name2 = impt;
+        } else if (datum.isList(impt)) {
+          var result = exports.compare(
+            datum.list(
+              datum.symbol('$name1'),
+              datum.symbol('as'),
+              datum.symbol('$name2')),
+            impt);
+          name1 = result[1];
+          name2 = result[2];
+        }
+        assert(name1, 'name1 is required');
+        assert(name2, 'name2 is required');
+
         return datum.list(
-          new datum.Operator('new'),
+          datum.symbol('def'),
+          name2,
           datum.list(
-            datum.symbol('Symbol'),
-            expr.name));
-      }
-      return expr;
+            new datum.PropertyAccessOperator(),
+            obj,
+            datum.list(datum.symbol('quote'), name1)));
+      }, imports);
+      return datum.cons(datum.symbol('statements'), result);
+    });
+
+  e.addRule(datum.list(
+    datum.symbol('do'), datum.symbol('$$stuff')), function (ast, stuff) {
+      return datum.cons(new datum.Operator(','), stuff);
     });
 
   return e;

@@ -50,28 +50,8 @@ function ReturnOperator() {}
 exports.ReturnOperator = ReturnOperator;
 
 
-function Quoted(x) {
-  this.x = x;
-}
-exports.Quoted = Quoted;
-
-
-function QuasiQuoted(x) {
-  this.x = x;
-}
-exports.QuasiQuoted = QuasiQuoted;
-
-
-function Unquoted(x) {
-  this.x = x;
-}
-exports.Unquoted = Unquoted;
-
-
-function UnquotedSplicing(x) {
-  this.x = x;
-}
-exports.UnquotedSplicing = UnquotedSplicing;
+function PropertyAccessOperator() {}
+exports.PropertyAccessOperator = PropertyAccessOperator;
 
 
 function TemplateVariable(symbol, value) {
@@ -93,6 +73,10 @@ util.inherits(TemplateRestVariable, TemplateVariable);
 
 exports.templateRestVariable = function (symbol) {
   return new TemplateRestVariable(symbol);
+};
+
+exports.identity = function (x) {
+  return x;
 };
 
 function Cons(left, right) {

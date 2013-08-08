@@ -35,9 +35,13 @@ util.inherits(Compiler, expander.Expander);
 Compiler.prototype.compile = function () {
   var ast;
   while ((ast = this.parser.parse()) !== lexer.EOF) {
-    this.output.append(this.compileAst(ast) + ';');
+    this.output.append(this.compileStatement(ast));
   }
   return new stream.Stream(this.output.data);
+};
+
+Compiler.prototype.compileStatement = function (ast) {
+  return this.compileAst(ast) + ';';
 };
 
 Compiler.prototype.compileAst = function (ast) {
@@ -99,13 +103,17 @@ exports.makeCompiler = function (parser) {
     datum.symbol('$a'),
     datum.symbol('$$rest')),
     function (ast, a, rest) {
-      var c_name, args, body, c_body;
+      var c_name, args, body, c_body, open, close;
+      open = '';
+      close = '';
       if (rest.right) {
         c_name = compiler.compileAst(a);
         args = rest.left;
         body = rest.right.left;
       } else {
         c_name = '';
+        open = '(';
+        close = ')';
         args = a;
         body = rest.left;
       }
@@ -113,8 +121,8 @@ exports.makeCompiler = function (parser) {
       if (c_body) {
         c_body += ';';
       }
-      return 'function ' + c_name + arglistpile(args) + ' { ' + c_body +
-        ' }';
+      return open + 'function ' + c_name + arglistpile(args) + ' { ' +
+        c_body + ' }' + close;
     });
 
   compiler.addRule(datum.list(
@@ -149,8 +157,32 @@ exports.makeCompiler = function (parser) {
   compiler.addRule(datum.list(
     expander.type(datum.ReturnOperator),
     datum.symbol('$x')), function (ast, x) {
-    return 'return ' + compiler.compileAst(x);
+      return 'return ' + compiler.compileAst(x);
+    });
+
+  var isQuotedTest = expander.test(function (s) {
+    return s instanceof datum.Symbol &&
+      (s.name === 'quote' || s.name === 'quasiquote');
   });
+
+  var quotedComparator = datum.list(
+    isQuotedTest, datum.symbol('$x'));
+
+  compiler.addRule(datum.list(
+    expander.type(datum.PropertyAccessOperator),
+    datum.symbol('$base'),
+    datum.symbol('$$rest')), function (ast, base, rest) {
+      var parts = [compiler.compileAst(base)];
+      datum.each(function (prop) {
+        var match = expander.compare(quotedComparator, prop);
+        if (match) {
+          parts.push('.' + match[1].escapedName());
+        } else {
+          parts.push('[' + compiler.compileAst(prop) + ']');
+        }
+      }, rest);
+      return parts.join('');
+    });
 
   compiler.addRule(expander.type(datum.Symbol), function (sym) {
     return sym.escapedName();
@@ -162,12 +194,56 @@ exports.makeCompiler = function (parser) {
   });
 
   compiler.addRule(datum.list(
+    datum.symbol('quote'),
+    datum.symbol('$expr')), function (ast, expr) {
+      if (datum.isList(expr)) {
+        expr = datum.apply(datum.list, datum.symbol('list'), expr);
+      } else if (expr instanceof datum.Symbol) {
+        expr = datum.list(
+          datum.symbol('symbol'),
+          expr.name);
+      }
+      return compiler.compileAst(expr);
+    });
+
+  compiler.addRule(datum.list(
+    datum.symbol('quasiquote'),
+    datum.symbol('$expr')), function (ast, expr) {
+      throw 'unimplemented';
+    });
+
+  compiler.addRule(datum.list(
+    datum.symbol('unquote'),
+    datum.symbol('$expr')), function (ast, expr) {
+      throw 'unimplemented';
+    });
+
+  compiler.addRule(datum.list(
+    datum.symbol('unquote-splicing'),
+    datum.symbol('$expr')), function (ast, expr) {
+      throw 'unimplemented';
+    });
+
+  compiler.addRule(datum.list(
+    datum.symbol('statements'),
+    datum.symbol('$$statements')), function (ast, statements) {
+      var results = datum.map(function (statement) {
+        return compiler.compileStatement(statement);
+      }, statements);
+      return datum.reduce(function (a, b) {
+        return a + b;
+      }, '', results);
+    });
+
+  // This is a catch-all for any list patterns, so it should be the
+  // last list pattern.
+  compiler.addRule(datum.list(
     datum.symbol('$fn'), datum.symbol('$$args')), function (ls, fn, args) {
     return compiler.compileAst(fn) + arglistpile(args);
   });
 
   compiler.addRule(expander.type(datum.Cons), function (cons) {
-    return 'new Cons' + arglistpile([cons.left, cons.right]);
+    return 'cons' + arglistpile([cons.left, cons.right]);
   });
 
   compiler.addRule(null, function () {

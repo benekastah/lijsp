@@ -27,6 +27,13 @@ describe('Symbol', function () {
   });
 });
 
+describe('identity', function () {
+  it('should return the first argument passed in', function () {
+    assert.equal(5, datum.identity(5));
+    assert.equal('asdf', datum.identity('asdf', 1, 2,3));
+  });
+});
+
 describe('list', function () {
   it('should be able to build a list from its arguments', function () {
     var ls = datum.list(1, 2, 3);
@@ -198,6 +205,7 @@ describe('init', function () {
     assert.equal(1, datum.nth(0, it));
     assert.equal(2, datum.nth(1, it));
     assert.equal(3, datum.nth(2, it));
+    return it;
   };
 
   var testSingleItemList = function (ls) {
@@ -212,21 +220,26 @@ describe('init', function () {
   };
 
   it('should get the init of a list', function () {
-    testList(datum.list(1, 2, 3, 4));
-    var it = testEmptyList(null);
+    var it;
+    it = testList(datum.list(1, 2, 3, 4));
+    assert.ok(datum.isList(it));
+    it = testEmptyList(null);
     assert.equal(null, it);
     testSingleItemList(datum.list(1));
   });
 
   it('should get the init of an array', function () {
-    testList([1, 2, 3, 4]);
+    var it;
+    it = testList([1, 2, 3, 4]);
+    assert.ok(it instanceof Array);
     testEmptyList([]);
     testSingleItemList([1]);
   });
 
   it('should get the init of an array-like object', function () {
     (function () {
-      testList(arguments);
+      var it = testList(arguments);
+      assert.ok(it instanceof Array);
     })(1, 2, 3, 4);
     (function () {
       testEmptyList(arguments);
@@ -412,7 +425,7 @@ describe('concat', function () {
 
   it('should be able to concatenate lists', function () {
     var ls = test(datum.list(1, 2), datum.list(3, 4), datum.list(5, 6));
-    assert.ok(ls instanceof datum.Cons);
+    assert.ok(datum.isList(ls));
   });
 
   it('should be able to concatenate arrays', function () {

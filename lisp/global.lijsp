@@ -1,0 +1,14 @@
+
+(@<var> (datum (require "../datum")))
+
+(use-from datum
+          list cons symbol apply
+          each map filter reduce (reduceRight as reduce-r)
+          (reduceLeft as reduce-l) reverse concat nth first last init tail
+          head join
+          (isList as list?))
+
+(def (print)
+  ((@<.> console 'log 'apply) (@<.> console 'log) arguments))
+
+(print (map (lambda (x) (@<+> x 2)) '(1 2 3 4 5 6)))

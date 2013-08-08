@@ -194,29 +194,33 @@ exports.makeParser = function (lex) {
         return datum.list(datum.symbol('unquote-splicing'), expr);
       }
     ]).
+    action('Operator', [lexer.JSOperator, function (op) {
+      var opText = op.reMatch[1];
+      if (util.contains(jsOperators, opText)) {
+        return new datum.Operator(opText);
+      } else if (opText === '?:') {
+        return new datum.TernaryOperator();
+      } else if (opText === 'void') {
+        return new datum.VoidOperator();
+      } else if (opText === 'this') {
+        return new datum.ThisOperator();
+      } else if (opText === 'var') {
+        return new datum.VarOperator();
+      } else if (opText === 'function') {
+        return new datum.FunctionOperator();
+      } else if (opText === 'return') {
+        return new datum.ReturnOperator();
+      } else if (opText === '.') {
+        return new datum.PropertyAccessOperator();
+      } else {
+        throw 'Unrecognized operator: ' + op.matchText;
+      }
+    }]).
     action('Expression',
-      [lexer.JSOperator, function (op) {
-        var opText = op.reMatch[1];
-        if (util.contains(jsOperators, opText)) {
-          return new datum.Operator(opText);
-        } else if (opText === '?:') {
-          return new datum.TernaryOperator();
-        } else if (opText === 'void') {
-          return new datum.VoidOperator();
-        } else if (opText === 'this') {
-          return new datum.ThisOperator();
-        } else if (opText === 'var') {
-          return new datum.VarOperator();
-        } else if (opText === 'function') {
-          return new datum.FunctionOperator();
-        } else if (opText === 'return') {
-          return new datum.ReturnOperator();
-        } else {
-          throw 'Unrecognized operator: ' + op.matchText;
-        }
-      }],
+      'Operator',
       [lexer.Symbol, function (s) { return new datum.Symbol(s.matchText); }],
       [lexer.Number, function (n) { return +n.matchText; }],
+      [lexer.String, function (s) { return s.matchText; }],
       'Cons',
       'List',
       'Quote').

@@ -1,4 +1,5 @@
-var util = require('./util');
+var util = require('./util'),
+    datum = require('./datum');
 
 function Token(name, patterns) {
   this.name = name;
@@ -76,17 +77,55 @@ exports.TokenMatch = TokenMatch;
 
 
 exports.tokens = [];
-var defToken = function (name) {
-  var patterns = util.slice(arguments, 1),
-      tok = new Token(name, patterns);
+exports.stringTokens = [];
+var _defToken = function (tokens, name) {
+  var patterns = util.slice(arguments, 2),
+      tok,
+      action;
+  if (util.type(datum.last(patterns)) === '[object Function]') {
+    action = patterns.pop();
+  }
+  tok = new Token(name, patterns);
   exports[name] = tok;
-  exports.tokens.push(tok);
+  tokens.push(action ? [tok, action] : tok);
   return tok;
+};
+
+var defToken = function () {
+  var args = util.slice(arguments);
+  args.unshift(exports.tokens);
+  return _defToken.apply(this, args);
+};
+
+var defStringToken = function () {
+  var args = util.slice(arguments);
+  args.unshift(exports.stringTokens);
+  return _defToken.apply(this, args);
 };
 
 defToken('OpenList', '(');
 defToken('CloseList', ')');
 defToken('Number', /\-?\d+(\.\d+)?/);
+
+defToken('String', '"', function (match) {
+  var lex = exports.makeStringLexer(this.input),
+      string = '',
+      result;
+  while ((result = lex.lex()) && result.token !== exports.StringClose) {
+    if (result.token === exports.EOF) {
+      throw new Lexer.Error(this.input, 'Unexpected EOF');
+    }
+    string += result.matchText;
+  }
+  match.matchText = string;
+  match.pos.end = result.pos.end;
+  return match;
+});
+
+// Order matters here.
+defStringToken('StringCloseEscaped', '\\"');
+defStringToken('StringBody', /[^"]/);
+defStringToken('StringClose', '"');
 
 defToken('Quote', '\'');
 defToken('QuasiQuote', '`');
@@ -95,7 +134,7 @@ defToken('UnquoteSplicing', ',@');
 
 defToken('Dot', '.', '·');
 
-var symbolChars = '\\w\\-+\\|\$!@%\\^&\\*=:\\?\\/<>\\\\~';
+var symbolChars = '\\w\\-+\\|\$!@%\\^&\\*=:\\?\\/<>\\\\~\\.';
 defToken('JSOperator', new RegExp('@<\\s*([' + symbolChars + ']+)\\s*>'));
 defToken('Symbol', new RegExp('[' + symbolChars + ']+'));
 
@@ -117,24 +156,38 @@ Lexer.prototype.lex = function () {
 
   for (var i = 0, len = this.tokens.length; i < len; i++) {
     var tok = this.tokens[i],
+        action = datum.identity,
         match;
+
+    if (util.type(tok) === '[object Array]') {
+      action = tok[1];
+      tok = tok[0];
+    }
+
     match = tok.match(this.input);
     if (match) {
-      return match;
+      return action.call(this, match);
     }
   }
 
   throw new Lexer.Error(this.input);
 };
 
-Lexer.Error = function (input) {
+Lexer.Error = function (input, message) {
   this.input = input;
   this.input_p = input._p;
   this.message = 'Can\'t lex: "' + this.input.peek() + '"';
+  if (message) {
+    this.message += ': ' + message;
+  }
 };
 util.inherits(Lexer.Error, Error);
 
 
 exports.makeLexer = function (input) {
   return new Lexer(input, exports.tokens);
+};
+
+exports.makeStringLexer = function (input) {
+  return new Lexer(input, exports.stringTokens);
 };
