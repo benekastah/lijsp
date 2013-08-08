@@ -1,14 +1,39 @@
 
 (@<var> (datum (require "../datum")))
+(@<var> (util (require "../util")))
 
 (use-from datum
           list cons symbol apply
           each map filter reduce (reduceRight as reduce-r)
-          (reduceLeft as reduce-l) reverse concat nth first last init tail
-          head join
+          (reduceLeft as reduce-l) reverse concat nth first second last
+          init tail head join identity
           (isList as list?))
+
+(def (array)
+  ((@<.> util 'slice) arguments))
+
+(def (object)
+  (reduce (lambda (o p)
+            (do
+              (@<=> (@<.> o (first p)) (second p))
+              o)) (@<new> (Object)) arguments))
 
 (def (print)
   ((@<.> console 'log 'apply) (@<.> console 'log) arguments))
 
-(print (map (lambda (x) (@<+> x 2)) '(1 2 3 4 5 6)))
+(def (+)
+  (reduce (lambda (a b) (@<+> a b)) 0 arguments))
+
+(def (-)
+  (reduce (lambda (a b) (@<-> a b)) 0 arguments))
+
+(def (*)
+  (reduce (lambda (a b) (@<*> a b)) 1 arguments))
+
+(def (/)
+  (reduce (lambda (a b) (@</> a b)) 1 arguments))
+
+(def (% a b)
+  (@<%> a b))
+
+(def ** (@<.> Math 'pow))

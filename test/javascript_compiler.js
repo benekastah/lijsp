@@ -63,9 +63,9 @@ describe('Compiler', function () {
 
     it('should compile a function statement', function () {
       var output = lijsp.compileString('(@<function> (a b) ((@<+> a b)))');
-      assert.equal('function (a, b) { (a + b); };', output.data);
+      assert.equal('(function (a, b) { (a + b); });', output.data);
       output = lijsp.compileString('(@<function> () ())');
-      assert.equal('function () {  };', output.data);
+      assert.equal('(function () {  });', output.data);
       output = lijsp.compileString('(@<function> asdf () (asdf))');
       assert.equal('function asdf() { asdf; };', output.data);
     });

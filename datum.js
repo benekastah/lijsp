@@ -139,6 +139,14 @@ exports.head = function (ls) {
 
 exports.first = exports.head;
 
+exports.second = function (ls) {
+  if (!exports.isList(ls) && ls instanceof Cons) {
+    return ls.right;
+  } else {
+    return exports.nth(1, ls);
+  }
+};
+
 exports.last = function (ls) {
   if (exports.isList(ls)) {
     while (ls) {
@@ -147,6 +155,8 @@ exports.last = function (ls) {
       }
       ls = ls.right;
     }
+  } else if (ls instanceof Cons) {
+    return ls.right;
   } else if (ls) {
     return ls[ls.length - 1];
   }

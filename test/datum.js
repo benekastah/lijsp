@@ -125,6 +125,39 @@ describe('first', function () {
       assert.equal(undefined, datum.first(arguments));
     })();
   });
+
+  it('should get the first item from a pair', function () {
+    var cons = datum.cons('asdfzz', 6);
+    assert.equal('asdfzz', datum.first(cons));
+  });
+});
+
+describe('second', function () {
+  it('should get the second item from a list', function () {
+    var ls = datum.list(1, 2, 3, 4);
+    assert.equal(2, datum.second(ls));
+    assert.equal(undefined, datum.second(null));
+  });
+
+  it('should get the second item from an array', function () {
+    var a = [1, 2, 3, 4];
+    assert.equal(2, datum.second(a));
+    assert.equal(undefined, datum.second([1]));
+  });
+
+  it('should get the second item from an array-like object', function () {
+    (function () {
+      assert.equal(2, datum.second(arguments));
+    })(1, 2, 3, 4);
+    (function () {
+      assert.equal(undefined, datum.second(arguments));
+    })(1);
+  });
+
+  it('should get the second item from a pair', function () {
+    var cons = datum.cons(1, 55);
+    assert.equal(55, datum.second(cons));
+  });
 });
 
 describe('last', function () {
@@ -147,6 +180,11 @@ describe('last', function () {
     (function () {
       assert.equal(undefined, datum.last(arguments));
     })();
+  });
+
+  it('should get the last item from a pair', function () {
+    var cons = datum.cons(1, 3);
+    assert.equal(3, datum.last(cons));
   });
 });
 

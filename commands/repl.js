@@ -2,6 +2,7 @@
 var repl = require('repl'),
     colors = require('colors'),
     fs = require('fs'),
+    path = require('path'),
     lijsp = require('../lijsp');
 
 exports.execute = function (args) {
@@ -23,17 +24,31 @@ exports.execute = function (args) {
     return this[this.length - 1];
   };
 
+  var setUpGlobals;
   var evalLine = function* () {
+    var result, val;
+
+    if (!args.showCode) {
+      console.log('Setting up globals...');
+      result = lijsp.compileString(
+        fs.readFileSync(path.join(__dirname, '../lisp/global.lijsp'), 'utf8'));
+      val = eval(result.data);
+    }
+    yield {value: val};
+
     while (1) {
       try {
-        var result = lijsp.compileString(lines.last());
-        var val = args.showCode ? result.data : eval(result.data);
+        result = lijsp.compileString(lines.last());
+        val = args.showCode ? result.data : eval(result.data);
         yield {value: val};
       } catch (e) {
         yield {error: e};
       }
     }
   }();
+
+  // Set up globals
+  evalLine.next();
 
   var lispRepl = repl.start({
     input: process.stdin,
