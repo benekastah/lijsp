@@ -15,6 +15,9 @@ Symbol.prototype.escapedName = function () {
   });
 };
 
+Symbol.prototype.toString = Symbol.prototype.escapedName;
+
+
 exports.symbol = function (name) {
   return new Symbol(name);
 };

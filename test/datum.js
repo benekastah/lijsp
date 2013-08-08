@@ -24,6 +24,11 @@ describe('Symbol', function () {
       var s = new datum.Symbol('55');
       assert.equal('_$1l$_5', s.escapedName());
     });
+
+    it('should return the escaped name when coerced to string', function () {
+      var s = new datum.Symbol('fitz-herbert');
+      assert.equal(s.escapedName(), '' + s);
+    });
   });
 });
 
