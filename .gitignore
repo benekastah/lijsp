@@ -12,3 +12,6 @@ logs
 results
 
 npm-debug.log
+
+.lijsp_repl_history.json
+node_modules/
