@@ -8,12 +8,10 @@ var stream = require('./stream'),
     undefined;
 
 function CompileError(m) {
-  if (m) {
-    this.message = this.message + ': ' + m;
-  }
+  CompileError.super_.call(this, m);
 }
 exports.CompileError = CompileError;
-util.inherits(CompileError, Error);
+util.inherits(CompileError, util.AbstractError);
 CompileError.prototype.message = CompileError.name;
 
 function Compiler(parser, exp) {
@@ -70,10 +68,51 @@ exports.makeCompiler = function (parser) {
     return '(' + commapile(ast) + ')';
   };
 
+  compiler.addRule(expander.type(datum.JavaScriptCode), function (js) {
+    return js.code;
+  });
+
   compiler.addRule(expander.type('[object Number]'), function (n) {
     return '' + n;
   });
 
+  compiler.addRule(datum.list(
+    datum.symbol('quote'),
+    datum.symbol('$expr')), function (ast, expr) {
+      if (datum.isList(expr)) {
+        expr = datum.apply(
+          datum.list,
+          datum.symbol('list'),
+          datum.map(function (x) {
+            return datum.list(datum.symbol('quote'), x);
+          }, expr));
+      } else if (expr instanceof datum.Symbol) {
+        expr = datum.list(
+          datum.symbol('symbol'),
+          expr.name);
+      } else if (expr instanceof datum.Operator) {
+        expr = datum.list(
+          new datum.Operator('new'),
+          datum.list(
+            datum.symbol('Operator'),
+            expr.name));
+      }
+
+      for (var i = 0, len = datum.specialOperators.length; i < len; i++) {
+        var SpecialOperator = datum.specialOperators[i];
+        if (expr instanceof SpecialOperator) {
+          expr = datum.list(
+            new datum.Operator('new'),
+            datum.list(
+              datum.symbol(SpecialOperator.name)));
+          break;
+        }
+      }
+
+      return compiler.compileAst(expr);
+    });
+
+  // All operators should go after the quote stuff
   compiler.addRule(expander.type(datum.ThisOperator), function (ast) {
     return 'this';
   });
@@ -96,6 +135,16 @@ exports.makeCompiler = function (parser) {
 
   compiler.addRule(expander.type(datum.VoidOperator), function () {
     return 'void(0)';
+  });
+
+  compiler.addRule(datum.list(
+    expander.type(datum.TernaryOperator),
+    datum.symbol('$condition'),
+    datum.symbol('$t'),
+    datum.symbol('$f')), function (ast, condition, t, f) {
+    return '(' + compiler.compileAst(condition) +
+      ' ? ' + compiler.compileAst(t) +
+      ' : ' + compiler.compileAst(f) + ')';
   });
 
   compiler.addRule(datum.list(
@@ -194,37 +243,6 @@ exports.makeCompiler = function (parser) {
   });
 
   compiler.addRule(datum.list(
-    datum.symbol('quote'),
-    datum.symbol('$expr')), function (ast, expr) {
-      if (datum.isList(expr)) {
-        expr = datum.apply(datum.list, datum.symbol('list'), expr);
-      } else if (expr instanceof datum.Symbol) {
-        expr = datum.list(
-          datum.symbol('symbol'),
-          expr.name);
-      }
-      return compiler.compileAst(expr);
-    });
-
-  compiler.addRule(datum.list(
-    datum.symbol('quasiquote'),
-    datum.symbol('$expr')), function (ast, expr) {
-      throw 'unimplemented';
-    });
-
-  compiler.addRule(datum.list(
-    datum.symbol('unquote'),
-    datum.symbol('$expr')), function (ast, expr) {
-      throw 'unimplemented';
-    });
-
-  compiler.addRule(datum.list(
-    datum.symbol('unquote-splicing'),
-    datum.symbol('$expr')), function (ast, expr) {
-      throw 'unimplemented';
-    });
-
-  compiler.addRule(datum.list(
     datum.symbol('statements'),
     datum.symbol('$$statements')), function (ast, statements) {
       var results = datum.map(function (statement) {
@@ -248,6 +266,10 @@ exports.makeCompiler = function (parser) {
 
   compiler.addRule(null, function () {
     return 'null';
+  });
+
+  compiler.addRule(undefined, function () {
+    return 'void(0)';
   });
 
   return compiler;

@@ -86,9 +86,11 @@ Stream.prototype.exhausted = function () {
   return this._p >= this.data.length;
 };
 
-Stream.TransactionError = function () {};
-Stream.TransactionError.prototype = util.clone(Error.prototype);
-Stream.TransactionError.prototype.constructor = Stream.TransactionError;
+function TransactionError() {
+  TransactionError.super_.call(this);
+}
+util.inherits(TransactionError, util.AbstractError);
+Stream.TransactionError = TransactionError;
 
 Stream.TransactionError.prototype.commit = function () {
   this.message = 'Can\'t commit a transaction when no transaction was begun';

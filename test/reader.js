@@ -113,22 +113,21 @@ describe('Parser', function () {
   });
 });
 
-var read = reader.read,
-    readString = reader.readString;
+var read = reader.read;
 describe('read', function () {
   it('should produce a parser that can parse a number', function () {
-    var result = readString('1');
+    var result = read('1');
     assert.equal(result, 1);
   });
 
   it('should produce a parser that can parse a symbol', function () {
-    var result = readString('asdf');
+    var result = read('asdf');
     assert.ok(result instanceof datum.Symbol);
     assert.equal('asdf', result.name);
   });
 
   it('should produce a parser that can parse a simple list', function () {
-    var result = readString('(1 2 3)'),
+    var result = read('(1 2 3)'),
         len = 0;
     assert.ok(result instanceof datum.Cons);
     assert.equal(3, datum.length(result));
@@ -142,7 +141,7 @@ describe('read', function () {
   });
 
   it('can ignore whitespace at the beginning and end of the input', function () {
-    var result = readString(' \v \n 1  \t ');
+    var result = read(' \v \n 1  \t ');
     assert(1, result);
   });
 });

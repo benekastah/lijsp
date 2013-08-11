@@ -2,20 +2,82 @@
 var util = require('./util'),
     Iterable = require('./iterable/iterable');
 
+function JavaScriptCode(code) {
+  this.code = code;
+}
+exports.JavaScriptCode = JavaScriptCode;
+
 function Symbol(name) {
   this.name = name instanceof Symbol ? name.name : name;
+  if (this.name == null) {
+    throw new Error('Invalid name: ' + name);
+  }
 }
 exports.Symbol = Symbol;
 
 Symbol.prototype.re_unsafe = /^\d|[^\w]/g;
 
+Symbol.prototype.wrapper = {start: '_$', end: '$_'};
+Symbol.prototype.wrap = function (s) {
+  return this.wrapper.start + s + this.wrapper.end;
+};
+
 Symbol.prototype.escapedName = function () {
-  return this.name.replace(this.re_unsafe, function (match) {
-    return '_$' + match.charCodeAt(0).toString(32) + '$_';
-  });
+  if (util.contains(this.reservedWords, this.name)) {
+    return this.wrap(this.name);
+  } else {
+    return this.name.replace(this.re_unsafe, util.bind(
+      function (match) {
+        return this.wrap(match.charCodeAt(0).toString(32));
+      }, this));
+  }
 };
 
 Symbol.prototype.toString = Symbol.prototype.escapedName;
+
+Symbol.prototype.reservedWords = [
+  'break',
+  'case',
+  'catch',
+  'class',
+  'continue',
+  'debugger',
+  'default',
+  'delete',
+  'do',
+  'else',
+  'enum',
+  'export',
+  'extends',
+  'finally',
+  'for',
+  'function',
+  'if',
+  'implements',
+  'import',
+  'in',
+  'instanceof',
+  'interface',
+  'let',
+  'new',
+  'package',
+  'private',
+  'protected',
+  'public',
+  'return',
+  'static',
+  'super',
+  'switch',
+  'this',
+  'throw',
+  'try',
+  'typeof',
+  'var',
+  'void',
+  'while',
+  'with',
+  'yield'
+];
 
 
 exports.symbol = function (name) {
@@ -28,33 +90,38 @@ function Operator(name) {
 }
 exports.Operator = Operator;
 
+exports.specialOperators = [];
+var makeSpecialOperator = function (f) {
+  exports.specialOperators.push(f);
+  exports[f.name] = f;
+};
 
 function TernaryOperator() {}
-exports.TernaryOperator = TernaryOperator;
+makeSpecialOperator(TernaryOperator);
 
 
 function VoidOperator() {}
-exports.VoidOperator = VoidOperator;
+makeSpecialOperator(VoidOperator);
 
 
 function ThisOperator() {}
-exports.ThisOperator = ThisOperator;
+makeSpecialOperator(ThisOperator);
 
 
 function VarOperator() {}
-exports.VarOperator = VarOperator;
+makeSpecialOperator(VarOperator);
 
 
 function FunctionOperator() {}
-exports.FunctionOperator = FunctionOperator;
+makeSpecialOperator(FunctionOperator);
 
 
 function ReturnOperator() {}
-exports.ReturnOperator = ReturnOperator;
+makeSpecialOperator(ReturnOperator);
 
 
 function PropertyAccessOperator() {}
-exports.PropertyAccessOperator = PropertyAccessOperator;
+makeSpecialOperator(PropertyAccessOperator);
 
 
 function TemplateVariable(symbol, value) {
@@ -108,7 +175,7 @@ exports.apply = function (fn) {
 };
 
 exports.isList = function (ls) {
-  if (ls === null) {
+  if (ls == null) {
     return true;
   }
   var result = !!ls;
@@ -117,6 +184,10 @@ exports.isList = function (ls) {
     ls = ls.right;
   }
   return result;
+};
+
+exports.isPair = function (p) {
+  return p instanceof Cons && !exports.isList(p);
 };
 
 exports.length = function (ls) {
@@ -331,10 +402,10 @@ exports.filter = function (fn, ls) {
 };
 
 function ReduceError(m) {
-  this.message = ReduceError.name + ': ' + m;
+  ReduceError.super_.call(this, m);
 }
 exports.ReduceError = ReduceError;
-util.inherits(ReduceError, Error);
+util.inherits(ReduceError, util.AbstractError);
 
 var _reduce = function (fn, curval, ls, opts) {
   var curvalDefined = arguments.length >= 3;
@@ -401,3 +472,4 @@ exports.nth = function (n, ls) {
     return ls[n];
   }
 };
+

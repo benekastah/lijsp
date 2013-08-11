@@ -14,11 +14,10 @@ exports.Token = Token;
 
 Token.InvalidPattern = function (p) {
   this.pattern = p;
-  this.message = 'Can\'t use "' + this.pattern + '" as a Token\'s pattern';
+  Token.InvalidPattern.super_.call(
+    'Can\'t use "' + this.pattern + '" as a Token\'s pattern');
 };
-
-Token.InvalidPattern.prototype = util.clone(Error.prototype);
-Token.InvalidPattern.prototype.constructor = Token.InvalidPattern;
+util.inherits(Token.InvalidPattern, util.AbstractError);
 
 Token.prototype.addPattern = function (p) {
   var t = util.type(p);
@@ -103,6 +102,10 @@ var defStringToken = function () {
   return _defToken.apply(this, args);
 };
 
+defToken('Comment', /;+(.*)/, function () {
+  return this.lex();
+});
+
 defToken('OpenList', '(');
 defToken('CloseList', ')');
 defToken('Number', /\-?\d+(\.\d+)?/);
@@ -173,15 +176,17 @@ Lexer.prototype.lex = function () {
   throw new Lexer.Error(this.input);
 };
 
-Lexer.Error = function (input, message) {
+function LexerError(input, message) {
   this.input = input;
   this.input_p = input._p;
-  this.message = 'Can\'t lex: "' + this.input.peek() + '"';
+  LexerError.super_.call(this);
+  this.message += ': Can\'t lex: "' + this.input.peek() + '"';
   if (message) {
     this.message += ': ' + message;
   }
-};
-util.inherits(Lexer.Error, Error);
+}
+util.inherits(LexerError, util.AbstractError);
+Lexer.Error = LexerError;
 
 
 exports.makeLexer = function (input) {

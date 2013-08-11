@@ -37,7 +37,7 @@ replParser.addArgument(['-c', '--showCode'], {
   defaultValue: false,
   action: 'storeTrue'
 });
-replParser.addArgument(['-a', '--ast'], {
+replParser.addArgument(['-a', '--showAst'], {
   help: 'Whether or not to print the ast rather than the eval\'d result',
   defaultValue: false,
   action: 'storeTrue'

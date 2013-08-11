@@ -101,3 +101,14 @@ exports.bind = function (fn) {
   return _bind.apply(fn, args);
 };
 
+function AbstractError(msg) {
+  if (Error.captureStackTrace) {
+    Error.captureStackTrace(this, this.constructor);
+  }
+  this.message = this.constructor.name || 'Error';
+  if (msg != null) {
+    this.message += ': ' + msg;
+  }
+}
+exports.AbstractError = AbstractError;
+exports.inherits(AbstractError, Error);

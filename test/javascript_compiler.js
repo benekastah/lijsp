@@ -23,7 +23,6 @@ describe('Compiler', function () {
 
     it('should compile a binary operation', function () {
       var output;
-      debugger;
       output = lijsp.compileString('(@<+> 1 2)');
       assert.equal('(1 + 2);', output.data);
       output = lijsp.compileString('(@<+> 1 2 3)');

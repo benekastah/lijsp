@@ -90,7 +90,7 @@ exports.getTemplateVariables = function (pattern) {
   var result = _getTemplateVariables(pattern);
   if (!datum.isList(result)) {
     return datum.list(result);
-  } else if (result) {
+  } else if (result != null) {
     return result;
   } else {
     return datum.list();
@@ -203,13 +203,34 @@ exports.makeExpander = function () {
     datum.symbol('defsyntax'),
     datum.symbol('$pattern'),
     datum.symbol('$$body')), function (ast, pattern, body) {
-      var args = exports.getTemplateVariables(pattern);
+      var args = datum.cons(
+        datum.symbol('' + Math.random()),
+        exports.getTemplateVariables(pattern));
       var lambda = datum.concat(
         datum.list(datum.symbol('lambda'), args),
         body);
-      var fn = eval('(' + e.compiler.compileAst(lambda) + ')');
-      e.addRule(pattern, fn);
-      return null;
+
+      var jsc = new datum.JavaScriptCode(
+        e.compiler.compileAst(datum.list(
+          datum.list(
+            new datum.PropertyAccessOperator(),
+            datum.symbol('lisp-compiler'),
+            'expander',
+            'addRule'),
+          datum.list(
+            datum.symbol('quote'),
+            pattern),
+          lambda)));
+
+      var fn;
+      try {
+        fn = require('lisp/env').lisp_eval(lambda);
+        e.addRule(pattern, fn);
+      } catch (e) {
+        console.warn(e);
+      }
+
+      return jsc;
     });
 
   e.addRule(datum.list(
@@ -283,6 +304,32 @@ exports.makeExpander = function () {
   e.addRule(datum.list(
     datum.symbol('do'), datum.symbol('$$stuff')), function (ast, stuff) {
       return datum.cons(new datum.Operator(','), stuff);
+    });
+
+  // quote is implemented in the compiler, because some low-level operations
+  // need quote to be unexapanded until the very end.
+  e.addRule(datum.list(
+    datum.symbol('quasiquote'),
+    datum.symbol('$expr')), function (ast, expr) {
+      var result = datum.cons(
+        datum.symbol('list'),
+        datum.map(function (x) {
+          var fst, fstIsSymbol;
+          if (datum.isList(x)) {
+            fst = datum.first(x);
+            fstIsSymbol = fst instanceof datum.Symbol;
+            if (fstIsSymbol && fst.name === 'unquote') {
+              return datum.second(x);
+            } else if (fstIsSymbol && fst.name === 'unquote-splicing') {
+              throw 'unimplemented';
+            } else {
+              return datum.list(datum.symbol('quasiquote'), x);
+            }
+          } else {
+            return datum.list(datum.symbol('quote'), x);
+          }
+        }, expr));
+      return result;
     });
 
   return e;

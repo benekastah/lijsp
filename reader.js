@@ -5,12 +5,9 @@ var lexer = require('./lexer'),
     undefined;
 
 function ParseError(message) {
-  if (message) {
-    this.message = this.message + ': ' + message;
-  }
+  ParseError.super_.call(message);
 }
-util.inherits(ParseError, Error);
-ParseError.prototype.message = ParseError.name;
+util.inherits(ParseError, util.AbstractError);
 
 function Parser(lex) {
   this.lexer = lex;
@@ -30,6 +27,19 @@ Parser.prototype.parse = function () {
     return this.endResult;
   }
   return this.parseAction(this.startAction);
+};
+
+Parser.prototype.parseAll = function () {
+  var results = datum.list(),
+      ast;
+  while ((ast = this.parse()) !== lexer.EOF) {
+    results = datum.cons(ast, results);
+  }
+  if (datum.length(results) > 1) {
+    return datum.cons(datum.symbol('statements'), results);
+  } else {
+    return datum.first(results);
+  }
 };
 
 Parser.prototype.tryParseAction = function (name) {
@@ -151,6 +161,14 @@ var jsOperators = [
   ',', 'delete', 'in', 'instanceof', 'new', 'typeof'
 ];
 exports.makeParser = function (lex) {
+  if (util.type(lex) === '[object String]') {
+    lex = new stream.Stream(lex);
+  }
+
+  if (lex instanceof stream.Stream) {
+    lex = lexer.makeLexer(lex);
+  }
+
   return new Parser(lex).
     ignore(lexer.Whitespace).
     action('List', [
@@ -228,13 +246,8 @@ exports.makeParser = function (lex) {
 };
 
 
-exports.read = function (stream) {
-  var lex = lexer.makeLexer(stream),
-      parser = exports.makeParser(lex);
+exports.read = function (lex) {
+  var parser = exports.makeParser(lex);
   return parser.parse();
-};
-
-exports.readString = function (str) {
-  return exports.read(new stream.Stream(str));
 };
 

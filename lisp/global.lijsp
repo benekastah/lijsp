@@ -1,13 +1,32 @@
 
 (@<var> (datum (require "../datum")))
+(@<var> (compiler (require "../javascript_compiler")))
+(@<var> (expander (require "../expander")))
+(@<var> (reader (require "../reader")))
 (@<var> (util (require "../util")))
+
+(def root (@<?:> (@<===> (@<typeof> global) "undefined")
+                 window
+                 global))
+
+;; This needs to be defined before any defsyntax calls
+(def lisp-compiler ((@<.> compiler 'makeCompiler)
+                    ()
+                    ((@<.> expander 'makeExpander))))
 
 (use-from datum
           list cons symbol apply
           each map filter reduce (reduceRight as reduce-r)
           (reduceLeft as reduce-l) reverse concat nth first second last
-          init tail head join identity
-          (isList as list?))
+          init tail head join identity length
+
+          ;; Operators
+          Operator TernaryOperator VoidOperator ThisOperator VarOperator
+          FunctionOperator ReturnOperator PropertyAccessOperator
+
+          (isList as list?)
+          (isPair as pair?))
+
 
 (def (array)
   ((@<.> util 'slice) arguments))
@@ -18,8 +37,7 @@
               (@<=> (@<.> o (first p)) (second p))
               o)) (@<new> (Object)) arguments))
 
-(def (print)
-  ((@<.> console 'log 'apply) (@<.> console 'log) arguments))
+(def print ((@<.> console 'log 'bind) console))
 
 (def (+)
   (reduce (lambda (a b) (@<+> a b)) 0 arguments))
@@ -31,9 +49,26 @@
   (reduce (lambda (a b) (@<*> a b)) 1 arguments))
 
 (def (/)
-  (reduce (lambda (a b) (@</> a b)) 1 arguments))
+  (reduce (lambda (a b) (@</> a b)) arguments))
 
 (def (% a b)
   (@<%> a b))
 
 (def ** (@<.> Math 'pow))
+
+;; Set up read
+(def (read s)
+  ((@<.> ((@<.> reader 'makeParser) s) 'parseAll)))
+
+;; Set up eval
+(def (to-js ast)
+  ((@<.> lisp-compiler 'compileAst) ast))
+(def to_js to-js)
+
+(def (lisp-eval ast)
+  (eval (to-js ast)))
+(def lisp_eval lisp-eval)
+(def js-eval eval)
+(defsyntax eval 'lisp-eval)
+
+(defsyntax (if $a $b $c) `(@<?:> ,$a ,$b ,$c))
