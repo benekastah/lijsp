@@ -4,7 +4,9 @@ var repl = require('repl'),
     fs = require('fs'),
     path = require('path'),
     lijsp = require('../lijsp'),
-    lispEnv = require('../lisp/env');
+    lispEnv = require('../lisp/env'),
+    datum = require('../datum'),
+    vm = require('vm');
 
 exports.execute = function (args) {
   var lines = [];
@@ -24,43 +26,39 @@ exports.execute = function (args) {
     return this[this.length - 1];
   };
 
-  var setUpGlobals;
-  var evalLine = function* () {
+  var evalLine = function (context, filename) {
     var val, ast, result, stack, js;
 
-    with (lispEnv) {
-      while (1) {
-        result = {};
-        try {
-          ast = lispEnv.read(lines.last());
-          if (args.showAst) {
-            // Don't set a property on result.
-            console.log(require('util').inspect(ast, {
-              colors: true,
-              depth: 100
-            }));
-          } else {
-            js = lispEnv.to_js(ast);
-            if (args.showCode) {
-              result.value = js;
-            } else {
-              result.value = eval(js);
-              // The following method may provide a better stack trace,
-              // but is unsuitable because local varables aren't preserved.
-              // result.value = lispEnv.lisp_eval(ast);
-            }
-          }
-        } catch (e) {
-          stack = e && e.stack;
-          if (stack) {
-            console.error(stack);
-          }
-          result.error = e;
+    result = {};
+    try {
+      var readJs = 'read(' + JSON.stringify(lines.last()) + ')';
+      if (args.showAst) {
+        if (args.showExpanded) {
+          readJs = 'macroexpand(' + readJs + ')';
         }
-        yield result;
+        ast = vm.runInContext(readJs, context, filename);
+        console.log(require('util').inspect(ast, {
+          colors: true,
+          depth: 100
+        }));
+        // Don't set a property on result.
+      } else {
+        js = vm.runInContext('to_js(' + readJs + ')', context, filename);
+        if (args.showCode) {
+          result.value = js;
+        } else {
+          result.value = vm.runInContext(js, context, filename);
+        }
       }
+    } catch (e) {
+      stack = e && e.stack;
+      if (stack) {
+        console.error(stack);
+      }
+      result.error = e;
     }
-  }();
+    return result;
+  };
 
   var lispRepl = repl.start({
     input: process.stdin,
@@ -69,7 +67,7 @@ exports.execute = function (args) {
     eval: function (line, context, filename, callback) {
       line = line.substr(1, line.length - 2).trim();
       lines.push(line);
-      var result = evalLine.next().value;
+      var result = evalLine(context, filename);
       if (result.error) {
         result.error = ('' + result.error).red;
       }
@@ -78,6 +76,14 @@ exports.execute = function (args) {
     // We always send lispRepl `undefined` when in showAst mode.
     ignoreUndefined: args.showAst
   });
+
+  // Required for def to work
+  lispRepl.context.exports = {};
+
+  // Populate lisp globals to repl context
+  for (var prop in lispEnv) {
+    lispRepl.context[prop] = lispEnv[prop];
+  }
 
   lispRepl.rli.history = lines;
 

@@ -1,0 +1,10 @@
+
+(import lisp/global)
+(use-from global print)
+
+(import lisp/test/test2)
+
+(def a 1)
+
+; (print ('b lisp/test/test2))
+(print a)

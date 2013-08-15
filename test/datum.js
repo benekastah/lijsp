@@ -453,6 +453,23 @@ describe('map', function () {
   });
 });
 
+describe('flatten', function () {
+  it('should be able to flatten a list', function () {
+    var ls = datum.list(
+      1, 2, 3,
+      datum.list(
+        4, 5, 6,
+        datum.list(datum.list())),
+        7);
+    var result = datum.flatten(ls);
+    assert.ok(result);
+    assert.equal(7, datum.length(result));
+    for (var i = 1; i <= 7; i++) {
+      assert.equal(i, datum.nth(i - 1, result));
+    }
+  });
+});
+
 describe('concat', function () {
   var test = function (a, b, c) {
     var ls = datum.concat(a, b, c);
@@ -467,7 +484,10 @@ describe('concat', function () {
   };
 
   it('should be able to concatenate lists', function () {
-    var ls = test(datum.list(1, 2), datum.list(3, 4), datum.list(5, 6));
+    var ls;
+    ls = test(datum.list(1, 2), datum.list(3, 4), datum.list(5, 6));
+    assert.ok(datum.isList(ls));
+    ls = test(datum.list(), datum.list(1, 2, 3), datum.list(4, 5, 6));
     assert.ok(datum.isList(ls));
   });
 

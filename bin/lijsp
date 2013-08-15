@@ -42,17 +42,20 @@ replParser.addArgument(['-a', '--showAst'], {
   defaultValue: false,
   action: 'storeTrue'
 });
+replParser.addArgument(['-e', '--showExpanded'], {
+  help: 'When showing the ast, use this option to expand it before printing',
+  defaultValue: false,
+  action: 'storeTrue'
+});
 
 var compileParser = subparsers.addParser('compile', {
   addHelp: true
 });
-compileParser.addArgument(['-f', '--files'], {
-  help: 'Enumerate the files to compile',
-  defaultValue: [],
-  nargs: '*'
+compileParser.addArgument(['-f', '--file'], {
+  help: 'The main file to compile'
 });
-compileParser.addArgument(['-o', '--outfile'], {
-  help: 'The path of the compiler output'
+compileParser.addArgument(['-o', '--outdir'], {
+  help: 'The path to the directory for compiler output'
 });
 compileParser.addArgument(['-i', '--indentLevel'], {
   help: 'The indent level of the generated javascript code',

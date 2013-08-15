@@ -3,6 +3,32 @@ var assert =  require('assert'),
     expander = require('../expander'),
     datum = require('../datum');
 
+describe('getTemplateVariables', function () {
+  var testResult = function (result, a, b) {
+    assert.ok(result);
+    assert.equal(2, datum.length(result));
+    assert.equal(a, datum.first(result));
+    assert.equal(b, datum.second(result));
+  };
+
+  it('should be able to extract a template variable from a flat list', function () {
+    var a = datum.symbol('$a'),
+        b = datum.symbol('$b');
+    var pattern = datum.list(a, b, datum.symbol('c'));
+    var result = expander.getTemplateVariables(pattern);
+    testResult(result, a, b);
+  });
+
+  it('should be able to extract a template variable from a nested list', function () {
+    var a = datum.symbol('$a'),
+        b = datum.symbol('$b');
+    var pattern = datum.list(
+      datum.list(datum.symbol('quote'), a), b, datum.symbol('c'));
+    var result = expander.getTemplateVariables(pattern);
+    testResult(result, a, b);
+  });
+});
+
 describe('compare', function () {
   it('should be able to compare simple values', function () {
     assert.ok(expander.compare(1, 1), 'identical numbers');

@@ -5,13 +5,9 @@ var util = require('./util'),
     reader = require('./reader'),
     lexer = require('./lexer');
 
-exports.compile = function (stream) {
-  var comp = compiler.makeCompiler(
-    reader.makeParser(
-      lexer.makeLexer(stream)));
+exports.compile = function (str, opts) {
+  var comp = compiler.makeCompiler(reader.makeParser(str), opts);
   return comp.compile();
 };
 
-exports.compileString = function (string) {
-  return exports.compile(new stream.Stream(string));
-};
+exports.compileString = exports.compile;

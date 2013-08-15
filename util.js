@@ -112,3 +112,9 @@ function AbstractError(msg) {
 }
 exports.AbstractError = AbstractError;
 exports.inherits(AbstractError, Error);
+
+exports.inspectable = function (Class) {
+  Class.prototype.inspect = function () {
+    return '[' + Class.name + ']';
+  };
+}

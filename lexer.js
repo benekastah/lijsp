@@ -132,8 +132,8 @@ defStringToken('StringClose', '"');
 
 defToken('Quote', '\'');
 defToken('QuasiQuote', '`');
-defToken('Unquote', ',');
 defToken('UnquoteSplicing', ',@');
+defToken('Unquote', ',');
 
 defToken('Dot', '.', '·');
 

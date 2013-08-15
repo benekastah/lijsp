@@ -1,6 +1,7 @@
 
 var datum = require('./datum'),
     util = require('./util'),
+    path = require('./path'),
     assert = require('assert');
 
 function Expander() {
@@ -9,13 +10,13 @@ function Expander() {
 }
 exports.Expander = Expander;
 
-Expander.prototype.earlyRulesetName = 'early';
-Expander.prototype.defaultRulesetName = 'default';
-Expander.prototype.lateRulesetName = 'late';
+Expander.prototype.EARLY_RULESET_NAME = 'early';
+Expander.prototype.DEFAULT_RULESET_NAME = 'default';
+Expander.prototype.LATE_RULESET_NAME = 'late';
 
 Expander.prototype.expand = function (ast) {
-  var names = [this.earlyRulesetName, this.defaultRulesetName,
-        this.lateRulesetName],
+  var names = [this.EARLY_RULESET_NAME, this.DEFAULT_RULESET_NAME,
+        this.LATE_RULESET_NAME],
       expandedAst = ast;
   for (var i = 0, len = names.length; i < len; i++) {
     expandedAst = this.expandRuleset(names[i], ast);
@@ -50,7 +51,7 @@ Expander.prototype.expandRuleset = function (setName, ast) {
 
 Expander.prototype.addRule = function (comparator, action, setName) {
   if (setName == null) {
-    setName = this.defaultRulesetName;
+    setName = this.DEFAULT_RULESET_NAME;
   }
   var set = this.rules[setName] || (this.rules[setName] = []);
   set.push({
@@ -80,7 +81,13 @@ exports.isTemplateVariable = function (x) {
 
 var _getTemplateVariables = function (pattern) {
   if (datum.isList(pattern)) {
-    return datum.filter(exports.isTemplateVariable, pattern);
+    return datum.map(function (x) {
+      if (datum.isList(x)) {
+        return _getTemplateVariables(x);
+      } else if (exports.isTemplateVariable(x)) {
+        return x;
+      }
+    }, pattern);
   } else if (exports.isTemplateVariable(pattern)) {
     return pattern;
   }
@@ -91,7 +98,7 @@ exports.getTemplateVariables = function (pattern) {
   if (!datum.isList(result)) {
     return datum.list(result);
   } else if (result != null) {
-    return result;
+    return datum.flatten(result);
   } else {
     return datum.list();
   }
@@ -270,6 +277,25 @@ exports.makeExpander = function () {
     });
 
   e.addRule(datum.list(
+    datum.symbol('import'),
+    datum.symbol('$fileName')), function (ast, fileName) {
+      var opts = e.compiler.opts;
+      if (opts.fileCompiler) {
+        opts.fileCompiler(fileName.name);
+      } else {
+        console.warn('No file compiler registered. ' +
+                     'You will have to compile each file on your own.');
+      }
+
+      return datum.list(
+        datum.symbol('def'),
+        fileName,
+        datum.list(
+          datum.symbol('require'),
+          fileName.name + '.lijsp.js'));
+    });
+
+  e.addRule(datum.list(
     datum.symbol('use-from'),
     datum.symbol('$obj'),
     datum.symbol('$$imports')), function (ast, obj, imports) {
@@ -306,31 +332,67 @@ exports.makeExpander = function () {
       return datum.cons(new datum.Operator(','), stuff);
     });
 
-  // quote is implemented in the compiler, because some low-level operations
-  // need quote to be unexapanded until the very end.
+  e.addRule(datum.list(
+    datum.symbol('quote'),
+    datum.symbol('$expr')), function (ast, expr) {
+      if (datum.isList(expr)) {
+        expr = datum.map(function (x) {
+          return datum.list(datum.symbol('quote'), x);
+        }, expr);
+      }
+      return datum.list(
+        new datum.Quote(),
+        expr);
+    }, e.LATE_RULESET_NAME);
+
   e.addRule(datum.list(
     datum.symbol('quasiquote'),
     datum.symbol('$expr')), function (ast, expr) {
-      var result = datum.cons(
-        datum.symbol('list'),
-        datum.map(function (x) {
-          var fst, fstIsSymbol;
+      var lists = new datum.Collection(),
+          listsAddQuoted = function (x) {
+            if (x != null) {
+              lists.add(datum.list(
+                new datum.Quote(),
+                x));
+            }
+          },
+          collection;
+      if (datum.isList(expr)) {
+        collection = new datum.Collection();
+        datum.each(function (x) {
+          var fst, snd;
           if (datum.isList(x)) {
             fst = datum.first(x);
-            fstIsSymbol = fst instanceof datum.Symbol;
-            if (fstIsSymbol && fst.name === 'unquote') {
-              return datum.second(x);
-            } else if (fstIsSymbol && fst.name === 'unquote-splicing') {
-              throw 'unimplemented';
-            } else {
-              return datum.list(datum.symbol('quasiquote'), x);
+            snd = datum.second(x);
+            if (fst instanceof datum.Symbol) {
+              if (fst.name === 'unquote') {
+                collection.add(snd);
+                return;
+              } else if (fst.name === 'unquote-splicing') {
+                listsAddQuoted(collection.value);
+                lists.add(snd);
+                collection = new datum.Collection();
+                return;
+              }
             }
-          } else {
-            return datum.list(datum.symbol('quote'), x);
           }
-        }, expr));
-      return result;
-    });
+          collection.add(datum.list(datum.symbol('quasiquote'), x));
+        }, expr);
+
+        if (datum.length(lists.value)) {
+          listsAddQuoted(collection.value);
+          return datum.apply(
+            datum.list,
+            datum.symbol('concat'),
+            lists.value);
+        } else {
+          expr = collection.value;
+        }
+      }
+      return datum.list(
+        new datum.Quote(),
+        expr);
+    }, e.LATE_RULESET_NAME);
 
   return e;
 };

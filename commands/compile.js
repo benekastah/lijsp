@@ -1,6 +1,8 @@
 
 var lijsp = require('../lijsp'),
     fs = require('fs'),
+    path = require('path'),
+    assert = require('assert'),
     UglifyJS;
 
 // Don't fail if optional dependency is not met
@@ -20,9 +22,21 @@ exports.execute = function (args) {
     }
   };
 
-  var compileOne = function (err, data, cb) {
+  var compileOne = function (err, fname, data, cb) {
     handleError(err);
-    var stream = lijsp.compileString(data);
+    var stream = lijsp.compileString(data, {
+      appDir: appDir,
+      currentFile: fname,
+      fileCompiler: function (f) {
+        var parts = f.split(path.sep);
+        assert.equal(appDir, parts.shift());
+        f = path.join.apply(path, parts) + '.lijsp';
+        if (fname) {
+          f = path.resolve(path.dirname(fname), f);
+        }
+        compileFile(f);
+      }
+    });
     cb(err, stream.data);
   };
 
@@ -54,33 +68,31 @@ exports.execute = function (args) {
     return data;
   };
 
-  var firstWrite;
-  var appendToOutput = function (err, outfile, data, cb) {
+  var appendToOutput = function (err, fpath, outdir, data, cb) {
     handleError(err);
     data = prettifyOutput(data) + '\n\n';
-    if (outfile) {
-      if (!firstWrite) {
-        fs.writeFile(outfile, data, cb);
-        firstWrite = true;
+    if (outdir) {
+      // fpath should only be blank if compiling from stdin
+      var jsFname;
+      if (fpath) {
+        jsFname = path.relative(appDir, path.resolve(fpath)) + '.js';
       } else {
-        fs.appendFile(outfile, data, cb);
+        jsFname = 'compiled-lijsp.js';
       }
+      var jsFpath = path.join(outdir, jsFname);
+      fs.writeFile(jsFpath, data, cb);
     } else {
       process.stdout.write(data, cb);
     }
   };
 
-  var makeOutputAppender = function (outfile, cb) {
+  var makeOutputAppender = function (fpath, outdir, cb) {
     return function (err, data) {
-      appendToOutput(err, outfile, data, cb);
+      appendToOutput(err, fpath, outdir, data, cb);
     };
   };
 
-  var inputs = args.files;
-  var outfile = args.outfile;
-  var appender = makeOutputAppender(outfile, handleError);
-
-  if (inputs.length === 0) {
+  var compileStdin = function (cb) {
     process.stdin.resume();
     process.stdin.setEncoding('utf8');
 
@@ -90,15 +102,28 @@ exports.execute = function (args) {
     });
 
     process.stdin.on('end', function () {
-      compileOne(null, compilerInput, appender);
+      compileOne(null, null, compilerInput, cb);
     });
 
     process.stdin.on('error', handleError);
-  } else {
-    inputs.forEach(function (f) {
-      fs.readFile(f, 'utf8', function (err, data) {
-        compileOne(err, data, appender);
-      });
+  };
+
+  var compileFile = function (f, cb) {
+    fs.readFile(f, 'utf8', function (err, data) {
+      compileOne(err, f, data, makeOutputAppender(f, outdir, function () {
+        handleError.apply(this, arguments);
+        cb && cb.apply(this, arguments);
+      }));
     });
+  };
+
+  // Kick off the compiling
+  var outdir = args.outdir;
+  var appDir;
+  if (args.file) {
+    appDir = path.dirname(args.file);
+    compileFile(args.file);
+  } else {
+    compileStdin(makeOutputAppender(null, outdir, handleError));
   }
 };

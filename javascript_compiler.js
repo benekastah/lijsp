@@ -14,15 +14,16 @@ exports.CompileError = CompileError;
 util.inherits(CompileError, util.AbstractError);
 CompileError.prototype.message = CompileError.name;
 
-function Compiler(parser, exp) {
+function Compiler(parser, opts) {
   Compiler.super_.call(this);
   // Since all compiler rules produce strings and strings are also valid
   // input for a compiler rule, prevent expanding previously expanded
   // values.
   this.expandExpanded = false;
 
+  this.opts = opts || {};
   this.parser = parser;
-  this.expander = exp || expander.makeExpander();
+  this.expander = this.opts.expander || expander.makeExpander();
   this.expander.compiler = this;
   this.output = new stream.WritableStream();
   this.compileAst = util.bind(this.compileAst, this);
@@ -53,8 +54,8 @@ Compiler.prototype.compileAst = function (ast) {
 };
 
 
-exports.makeCompiler = function (parser) {
-  var compiler = new Compiler(parser);
+exports.makeCompiler = function (parser, opts) {
+  var compiler = new Compiler(parser, opts);
 
   var mappile = util.bind(datum.map, datum, compiler.compileAst);
 
@@ -77,15 +78,13 @@ exports.makeCompiler = function (parser) {
   });
 
   compiler.addRule(datum.list(
-    datum.symbol('quote'),
+    expander.type(datum.Quote),
     datum.symbol('$expr')), function (ast, expr) {
       if (datum.isList(expr)) {
         expr = datum.apply(
           datum.list,
           datum.symbol('list'),
-          datum.map(function (x) {
-            return datum.list(datum.symbol('quote'), x);
-          }, expr));
+          expr);
       } else if (expr instanceof datum.Symbol) {
         expr = datum.list(
           datum.symbol('symbol'),
@@ -209,13 +208,8 @@ exports.makeCompiler = function (parser) {
       return 'return ' + compiler.compileAst(x);
     });
 
-  var isQuotedTest = expander.test(function (s) {
-    return s instanceof datum.Symbol &&
-      (s.name === 'quote' || s.name === 'quasiquote');
-  });
-
   var quotedComparator = datum.list(
-    isQuotedTest, datum.symbol('$x'));
+    expander.type(datum.Quote), datum.symbol('$x'));
 
   compiler.addRule(datum.list(
     expander.type(datum.PropertyAccessOperator),

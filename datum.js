@@ -123,6 +123,10 @@ makeSpecialOperator(ReturnOperator);
 function PropertyAccessOperator() {}
 makeSpecialOperator(PropertyAccessOperator);
 
+function Quote() {}
+util.inspectable(Quote);
+makeSpecialOperator(Quote);
+
 
 function TemplateVariable(symbol, value) {
   this.symbol = new Symbol(symbol);
@@ -308,7 +312,7 @@ exports.each = function (fn, opts, ls) {
 function Collection(coll) {
   var t;
   this.value = coll;
-  if (exports.isList(coll) || this.value == null) {
+  if (exports.isList(coll)) {
     this.curValue = this.value;
     this.add = this._addToList;
   } else if (util.typeIsArrayLike(t = util.type(coll))) {
@@ -380,6 +384,22 @@ exports.map = function (fn, ls) {
     }
   }, ls);
   return result.value;
+};
+
+exports.flatten = function (ls) {
+  var result = null;
+  exports.each(function (x) {
+    if (exports.isList(x)) {
+      x = exports.flatten(x);
+    } else if (x != null) {
+      x = exports.list(x);
+    }
+
+    if (x) {
+      result = exports.concat(result, x);
+    }
+  }, ls);
+  return result;
 };
 
 exports.concat = function (ls) {

@@ -18,7 +18,7 @@
           list cons symbol apply
           each map filter reduce (reduceRight as reduce-r)
           (reduceLeft as reduce-l) reverse concat nth first second last
-          init tail head join identity length
+          init tail head join identity length flatten
 
           ;; Operators
           Operator TernaryOperator VoidOperator ThisOperator VarOperator
@@ -60,6 +60,9 @@
 (def (read s)
   ((@<.> ((@<.> reader 'makeParser) s) 'parseAll)))
 
+(def (macroexpand ast)
+  ((@<.> lisp-compiler 'expander 'expand) ast))
+
 ;; Set up eval
 (def (to-js ast)
   ((@<.> lisp-compiler 'compileAst) ast))
@@ -72,3 +75,7 @@
 (defsyntax eval 'lisp-eval)
 
 (defsyntax (if $a $b $c) `(@<?:> ,$a ,$b ,$c))
+
+(defsyntax (get $obj $$props) `(@<.> ,$obj ,@$$props))
+
+(defsyntax ('$sym $obj) `(get ,$obj ',$sym))
