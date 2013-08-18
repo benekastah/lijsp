@@ -24,7 +24,7 @@ exports.execute = function (args) {
 
   var compileOne = function (err, fname, data, cb) {
     handleError(err);
-    var stream = lijsp.compileString(data, {
+    var stream = lijsp.compile(data, {
       appDir: appDir,
       currentFile: fname,
       fileCompiler: function (f) {
@@ -116,6 +116,7 @@ exports.execute = function (args) {
       }));
     });
   };
+
 
   // Kick off the compiling
   var outdir = args.outdir;

@@ -4,7 +4,7 @@ var repl = require('repl'),
     fs = require('fs'),
     path = require('path'),
     lijsp = require('../lijsp'),
-    lispEnv = require('../lisp/env'),
+    lispEnv = require('../lisp/global.lijsp.js'),
     datum = require('../datum'),
     vm = require('vm');
 

@@ -231,7 +231,7 @@ exports.makeExpander = function () {
 
       var fn;
       try {
-        fn = require('lisp/env').lisp_eval(lambda);
+        fn = require('lisp/global.lijsp.js').lisp_eval(lambda);
         e.addRule(pattern, fn);
       } catch (e) {
         console.warn(e);

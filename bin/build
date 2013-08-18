@@ -1,7 +1,7 @@
 #!/bin/sh
 
 INPUT='lisp/*.lijsp'
-OUTPUT='lisp/env.js'
+OUTPUT='lisp/'
 echo "Compiling $INPUT to $OUTPUT"
 bin/lijsp compile -f $INPUT -o $OUTPUT
 echo "Done."
