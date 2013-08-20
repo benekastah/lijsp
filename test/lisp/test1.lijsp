@@ -1,5 +1,5 @@
 
-(import lisp/global)
+(import global)
 (use-from global print)
 
 (import lisp/test/test2)

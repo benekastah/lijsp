@@ -95,3 +95,8 @@ describe('bind', function () {
   });
 });
 
+describe('startsWith', function () {
+  it('should determine whether a string starts with another string', function () {
+    assert.ok(util.startsWith('asdf-fdsa', 'asdf'));
+  });
+});

@@ -1,7 +1,7 @@
 
 var datum = require('./datum'),
     util = require('./util'),
-    path = require('./path'),
+    path = require('path'),
     assert = require('assert');
 
 function Expander() {
@@ -279,7 +279,8 @@ exports.makeExpander = function () {
   e.addRule(datum.list(
     datum.symbol('import'),
     datum.symbol('$fileName')), function (ast, fileName) {
-      var opts = e.compiler.opts;
+      var opts = e.compiler.opts,
+          isGlobal, requireF;
       if (opts.fileCompiler) {
         opts.fileCompiler(fileName.name);
       } else {
@@ -287,12 +288,23 @@ exports.makeExpander = function () {
                      'You will have to compile each file on your own.');
       }
 
+      var appDirName = path.join(opts.appName, '/');
+      if (util.startsWith(fileName.name, appDirName)) {
+        requireF = path.relative(
+          path.dirname(opts.currentFile), fileName.name);
+        if (!util.startsWith(requireF, '../')) {
+          requireF = './' + requireF;
+        }
+      } else {
+        requireF = path.join('lijsp/lisp', fileName.name);
+      }
+
       return datum.list(
         datum.symbol('def'),
         fileName,
         datum.list(
           datum.symbol('require'),
-          fileName.name + '.lijsp.js'));
+          requireF + '.lijsp.js'));
     });
 
   e.addRule(datum.list(

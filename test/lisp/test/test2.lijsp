@@ -1,7 +1,9 @@
 
-; (import lisp/global)
-; (use-from global print)
+(import lisp/test1)
+
+(import global)
+(use-from global print)
 
 (def b 2)
 
-; (print "here!!")
+(print "here!!")

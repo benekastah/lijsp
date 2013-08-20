@@ -3,6 +3,7 @@ var path = exports,
     util = require('./util');
 
 path.sep = '/';
+path.delimiter = ':';
 var re_sep = /\/+/g;
 
 var getParts = function (p) {

@@ -117,4 +117,8 @@ exports.inspectable = function (Class) {
   Class.prototype.inspect = function () {
     return '[' + Class.name + ']';
   };
-}
+};
+
+exports.startsWith = function (s, prefix) {
+  return s.substr(0, prefix.length) === prefix;
+};

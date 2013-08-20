@@ -79,3 +79,20 @@
 (defsyntax (get $obj $$props) `(@<.> ,$obj ,@$$props))
 
 (defsyntax ('$sym $obj) `(get ,$obj ',$sym))
+
+(def (rmap fn ls)
+  (map (lambda (x)
+    (if (list? x)
+      (rmap fn x)
+      (fn x)))))
+
+; (def (gensym sym)
+;   (@<var> r (('random Math)))
+;   (if sym
+;     (symbol (@<+> "" sym r))
+;     (symbol (@<+> "" r))))
+
+(defsyntax (let $vars $$body)
+  `((lambda ()
+      (@<var> ,@$vars)
+      ,@$$body)))
