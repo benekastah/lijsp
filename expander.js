@@ -14,24 +14,41 @@ Expander.prototype.EARLY_RULESET_NAME = 'early';
 Expander.prototype.DEFAULT_RULESET_NAME = 'default';
 Expander.prototype.LATE_RULESET_NAME = 'late';
 
-Expander.prototype.expand = function (ast) {
-  var names = [this.EARLY_RULESET_NAME, this.DEFAULT_RULESET_NAME,
-        this.LATE_RULESET_NAME],
+Expander.prototype.expand = function (ast, compiler) {
+  var oldCompiler = this.compiler;
+  if (arguments.length > 1) {
+    this.compiler = compiler;
+  }
+  var err;
+  try {
+    var names = [
+        this.EARLY_RULESET_NAME,
+        this.DEFAULT_RULESET_NAME,
+        this.LATE_RULESET_NAME
+      ],
       expandedAst = ast;
-  for (var i = 0, len = names.length; i < len; i++) {
-    expandedAst = this.expandRuleset(names[i], ast);
-    if (expandedAst !== ast) {
-      break;
+    for (var i = 0, len = names.length; i < len; i++) {
+      expandedAst = this.expandRuleset(names[i], ast);
+      if (expandedAst !== ast) {
+        break;
+      }
+    }
+    if (datum.isList(expandedAst)) {
+      // After the original form has been expanded, expand each of its
+      // children.
+      expandedAst = datum.map(util.bind(function (x) {
+        return this.expand(x);
+      }, this), expandedAst);
+    }
+    return expandedAst;
+  } catch (e) {
+    err = e;
+  } finally {
+    this.compiler = oldCompiler;
+    if (err != null) {
+      throw err;
     }
   }
-  if (datum.isList(expandedAst)) {
-    // After the original form has been expanded, expand each of its
-    // children.
-    expandedAst = datum.map(util.bind(function (x) {
-      return this.expand(x);
-    }, this), expandedAst);
-  }
-  return expandedAst;
 };
 
 Expander.prototype.expandRuleset = function (setName, ast) {
@@ -221,8 +238,7 @@ exports.makeExpander = function () {
         e.compiler.compileAst(datum.list(
           datum.list(
             new datum.PropertyAccessOperator(),
-            datum.symbol('lisp-compiler'),
-            'expander',
+            datum.symbol('lisp-expander'),
             'addRule'),
           datum.list(
             datum.symbol('quote'),
@@ -231,7 +247,7 @@ exports.makeExpander = function () {
 
       var fn;
       try {
-        fn = require('lisp/global.lijsp.js').lisp_eval(lambda);
+        fn = util.getGlobal().lisp_eval(lambda);
         e.addRule(pattern, fn);
       } catch (e) {
         console.warn(e);
@@ -308,6 +324,34 @@ exports.makeExpander = function () {
     });
 
   e.addRule(datum.list(
+    datum.symbol('import-from'),
+    datum.symbol('$module'),
+    datum.symbol('$$imports')), function (ast, mod, imports) {
+      return datum.list(
+        datum.symbol('statements'),
+        datum.list(datum.symbol('import'), mod),
+        datum.cons(
+          datum.symbol('use-from'),
+          datum.cons(mod, imports)));
+    });
+
+  e.addRule(datum.list(
+    datum.symbol('*import-all-globals*')), function () {
+      var global = util.getGlobal();
+      if (global) {
+        var names = datum.apply(datum.list, util.keys(global));
+        return datum.cons(
+          datum.symbol('import-from'),
+          datum.cons(
+            datum.symbol('global'),
+            names));
+      } else {
+        console.warn('lijsp not yet properly bootstrapped');
+        return null;
+      }
+    });
+
+  e.addRule(datum.list(
     datum.symbol('use-from'),
     datum.symbol('$obj'),
     datum.symbol('$$imports')), function (ast, obj, imports) {
@@ -315,6 +359,8 @@ exports.makeExpander = function () {
         var name1, name2;
         if (impt instanceof datum.Symbol) {
           name1 = name2 = impt;
+        } else if (util.type(impt) === '[object String]') {
+          name1 = name2 = datum.symbol(impt, true);
         } else if (datum.isList(impt)) {
           var result = exports.compare(
             datum.list(

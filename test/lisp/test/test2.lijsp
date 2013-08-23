@@ -1,9 +1,5 @@
 
-(import lisp/test1)
-
-(import global)
-(use-from global print)
-
-(def b 2)
-
-(print "here!!")
+(def (fact n)
+  (if (< n 1)
+    1
+    (* n (fact (- n 1)))))

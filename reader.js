@@ -230,6 +230,8 @@ exports.makeParser = function (lex) {
         return new datum.ReturnOperator();
       } else if (opText === '.') {
         return new datum.PropertyAccessOperator();
+      } else if (opText === 'for') {
+        return new datum.ForOperator();
       } else {
         throw 'Unrecognized operator: ' + op.matchText;
       }

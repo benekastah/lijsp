@@ -6,6 +6,7 @@ var lijsp = require('../lijsp'),
     util = require('../util'),
     mkdirp = require('mkdirp'),
     exec = require('child_process').exec,
+    lispGlobal = util.getGlobal() || {},
     globalRootDir = path.normalize(path.join(__dirname, '../lisp')),
     compilePath,
     UglifyJS;
@@ -41,10 +42,12 @@ exports.execute = function (args) {
   var compileOne = function (err, fname, data, cb) {
     handleError(err);
     compiledFiles[fname] = true;
+    data = '(*import-all-globals*) ' + data;
     var stream = lijsp.compile(data, {
       appDir: appDir,
       appName: appName,
       currentFile: path.join(appName, path.relative(appDir, fname)),
+      expander: lispGlobal.lisp_expander,
       // Compilation should be syncronous
       fileCompiler: function (f) {
         var parts = f.split(path.sep),

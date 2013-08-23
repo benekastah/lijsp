@@ -2,10 +2,15 @@
 var util = require('./util'),
     Iterable = require('./iterable/iterable');
 
+var datum = exports;
+
 function JavaScriptCode(code) {
   this.code = code;
 }
 exports.JavaScriptCode = JavaScriptCode;
+JavaScriptCode.prototype.inspect = function () {
+  return '[' + JavaScriptCode.name + ' ' + this.code + ']';
+};
 
 function Symbol(name) {
   this.name = name instanceof Symbol ? name.name : name;
@@ -15,7 +20,7 @@ function Symbol(name) {
 }
 exports.Symbol = Symbol;
 
-Symbol.prototype.re_unsafe = /^\d|[^\w]/g;
+Symbol.prototype.re_unsafe = /^\d|[^\w\$]/g;
 
 Symbol.prototype.wrapper = {start: '_$', end: '$_'};
 Symbol.prototype.wrap = function (s) {
@@ -34,6 +39,10 @@ Symbol.prototype.escapedName = function () {
 };
 
 Symbol.prototype.toString = Symbol.prototype.escapedName;
+
+Symbol.prototype.inspect = function () {
+  return util.color(this.name, 'green');
+};
 
 Symbol.prototype.reservedWords = [
   'break',
@@ -84,11 +93,24 @@ exports.symbol = function (name) {
   return new Symbol(name);
 };
 
+exports.gensym = function (sym) {
+  if (sym instanceof Symbol) {
+    sym = sym.name;
+  }
+  if (!sym) {
+    sym = '';
+  } else {
+    sym += '-';
+  }
+  return datum.symbol(sym + Math.random());
+};
+
 
 function Operator(name) {
   this.name = name;
 }
 exports.Operator = Operator;
+util.inspectable(Operator);
 
 exports.specialOperators = [];
 var makeSpecialOperator = function (f) {
@@ -97,31 +119,42 @@ var makeSpecialOperator = function (f) {
 };
 
 function TernaryOperator() {}
+util.inspectable(TernaryOperator);
 makeSpecialOperator(TernaryOperator);
 
 
 function VoidOperator() {}
+util.inspectable(VoidOperator);
 makeSpecialOperator(VoidOperator);
 
 
 function ThisOperator() {}
+util.inspectable(ThisOperator);
 makeSpecialOperator(ThisOperator);
 
 
 function VarOperator() {}
+util.inspectable(VarOperator);
 makeSpecialOperator(VarOperator);
 
 
 function FunctionOperator() {}
+util.inspectable(FunctionOperator);
 makeSpecialOperator(FunctionOperator);
 
 
 function ReturnOperator() {}
+util.inspectable(ReturnOperator);
 makeSpecialOperator(ReturnOperator);
 
 
 function PropertyAccessOperator() {}
+util.inspectable(PropertyAccessOperator);
 makeSpecialOperator(PropertyAccessOperator);
+
+function ForOperator() {}
+util.inspectable(ForOperator);
+makeSpecialOperator(ForOperator);
 
 function Quote() {}
 util.inspectable(Quote);
@@ -153,11 +186,49 @@ exports.identity = function (x) {
   return x;
 };
 
+exports.inspectObject = function (o) {
+  var call = datum.list(datum.symbol('object')),
+      step = call;
+  for (var k in o) {
+    step = step.right = datum.cons(datum.cons(k, o[k]));
+  }
+  return util.inspect(call);
+};
+
 function Cons(left, right) {
   this.left = left;
   this.right = right;
 }
 exports.Cons = Cons;
+
+var consInspect = function (p) {
+  return [
+    '(', util.inspect(p.left),
+    util.color(' · ', 'magenta'),
+    util.inspect(p.right), ')'
+  ].join('');
+};
+
+var listInspect = function (ls) {
+  var result = [];
+  exports.each(function (x) {
+    if (exports.isList(x)) {
+      result.push(listInspect(x));
+    } else {
+      result.push(util.inspect(x));
+    }
+  }, ls);
+  result = result.join(' ');
+  return '(' + result + ')';
+};
+
+Cons.prototype.inspect = function () {
+  if (exports.isList(this)) {
+    return listInspect(this);
+  } else {
+    return consInspect(this);
+  }
+};
 
 exports.cons = function (left, right) {
   return new Cons(left, right);

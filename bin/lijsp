@@ -34,17 +34,19 @@ replParser.addArgument(['-p', '--historyPersist'], {
 replParser.addArgument(['-c', '--showCode'], {
   help: 'Whether or not to print the generated code rather than the ' +
     'eval\'d result',
-  defaultValue: false,
   action: 'storeTrue'
 });
 replParser.addArgument(['-a', '--showAst'], {
   help: 'Whether or not to print the ast rather than the eval\'d result',
-  defaultValue: false,
   action: 'storeTrue'
 });
 replParser.addArgument(['-e', '--showExpanded'], {
   help: 'When showing the ast, use this option to expand it before printing',
-  defaultValue: false,
+  action: 'storeTrue'
+});
+replParser.addArgument(['-i', '--defaultInspect'], {
+  help: 'When displaying a result, use node\'s inspect function instead ' +
+    'of lijsp\'s',
   action: 'storeTrue'
 });
 

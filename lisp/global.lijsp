@@ -9,16 +9,11 @@
                  window
                  global))
 
-;; This needs to be defined before any defsyntax calls
-(def lisp-compiler ((@<.> compiler 'makeCompiler)
-                    ()
-                    ((@<.> expander 'makeExpander))))
-
 (use-from datum
           list cons symbol apply
           each map filter reduce (reduceRight as reduce-r)
           (reduceLeft as reduce-l) reverse concat nth first second last
-          init tail head join identity length flatten
+          init tail head join identity length flatten gensym
 
           ;; Operators
           Operator TernaryOperator VoidOperator ThisOperator VarOperator
@@ -27,6 +22,12 @@
           (isList as list?)
           (isPair as pair?))
 
+(use-from util
+          inspect)
+
+;; This needs to be defined before any defsyntax calls
+(def lisp-expander ((@<.> expander 'makeExpander)))
+(def lisp_expander lisp-expander)
 
 (def (array)
   ((@<.> util 'slice) arguments))
@@ -37,13 +38,26 @@
               (@<=> (@<.> o (first p)) (second p))
               o)) (@<new> (Object)) arguments))
 
-(def print ((@<.> console 'log 'bind) console))
+(def lisp-compiler ((@<.> compiler 'makeCompiler)
+                    ()
+                    (object (cons 'expander lisp-expander))))
+
+
+(defsyntax (print $$stuff)
+  (@<var> (args (map (lambda (x) `(inspect ,x)) $$stuff)))
+  `((@<.> console 'log) ,@args))
+
+(def (printfn)
+  (@<var> (args (map (lambda (x) (inspect x)) arguments)))
+  (apply (@<.> console 'log) args))
 
 (def (+)
   (reduce (lambda (a b) (@<+> a b)) 0 arguments))
 
 (def (-)
-  (reduce (lambda (a b) (@<-> a b)) 0 arguments))
+  (@<?:> (@<===> (@<.> arguments 'length) 1)
+    (@<-> (@<.> arguments 0))
+    (reduce (lambda (a b) (@<-> a b)) arguments)))
 
 (def (*)
   (reduce (lambda (a b) (@<*> a b)) 1 arguments))
@@ -56,9 +70,33 @@
 
 (def ** (@<.> Math 'pow))
 
+(def (< a b)
+  (@<<> a b))
+
+(def (> a b)
+  (@<>> a b))
+
+(def (<= a b)
+  (@<<=> a b))
+
+(def (>= a b)
+  (@<>=> a b))
+
+(defsyntax (or $$args)
+  `(@<||> ,@$$args))
+
+(defsyntax (and $$args)
+  `(@<&&> ,@$$args))
+
+(def (not x)
+  (@<!> x))
+
 ;; Set up read
+(def (make-parser s)
+  ((@<.> reader 'makeParser) s))
+
 (def (read s)
-  ((@<.> ((@<.> reader 'makeParser) s) 'parseAll)))
+  ((@<.> (make-parser s) 'parseAll)))
 
 (def (macroexpand ast)
   ((@<.> lisp-compiler 'expander 'expand) ast))
@@ -77,20 +115,19 @@
 (defsyntax (if $a $b $c) `(@<?:> ,$a ,$b ,$c))
 
 (defsyntax (get $obj $$props) `(@<.> ,$obj ,@$$props))
+; (defsyntax ('$sym $obj) `(get ,$obj ',$sym))
 
-(defsyntax ('$sym $obj) `(get ,$obj ',$sym))
+(defsyntax (set ($obj $$props) $val)
+  `(@<=> (get ,$obj ,@$$props) ,$val))
+
+(defsyntax (set $x $val)
+  `(@<=> ,$x ,$val))
 
 (def (rmap fn ls)
   (map (lambda (x)
     (if (list? x)
       (rmap fn x)
-      (fn x)))))
-
-; (def (gensym sym)
-;   (@<var> r (('random Math)))
-;   (if sym
-;     (symbol (@<+> "" sym r))
-;     (symbol (@<+> "" r))))
+      (fn x))) ls))
 
 (defsyntax (let $vars $$body)
   `((lambda ()

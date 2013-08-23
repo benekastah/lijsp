@@ -2,6 +2,10 @@
 
 INPUT='lisp/*.lijsp'
 OUTPUT='lisp/'
+echo "Cleaning previously compiled files..."
+for JS in `find $OUTPUT -name "*.js"`; do
+  rm $JS
+done
 echo "Compiling $INPUT to $OUTPUT"
 bin/lijsp compile -f $INPUT -o $OUTPUT
 echo "Done."

@@ -119,6 +119,53 @@ exports.inspectable = function (Class) {
   };
 };
 
+var color = exports.color = function (x) {
+  x = '' + x;
+  var i, len, color;
+  for (i = 1, len = arguments.length; i < len; i++) {
+    color = arguments[i];
+    if (color in String.prototype) {
+      x = x[color];
+    }
+  }
+  return x;
+};
+
+var re_stringQuote = /"/g;
+exports.inspect = function (x) {
+  if (x && x.inspect) {
+    return x.inspect();
+  } else if (x === null) {
+    return color('()', 'white');
+  } else if (x === undefined) {
+    return color('undefined', 'grey');
+  }
+
+  switch (exports.type(x)) {
+    case '[object Number]':
+      return color(x, 'yellow');
+    case '[object Object]':
+      return require('./datum').inspectObject(x);
+    case '[object String]':
+      return color('"' + x.replace(re_stringQuote, '\\"') + '"', 'cyan');
+    default:
+      return '' + x;
+  }
+};
+
 exports.startsWith = function (s, prefix) {
   return s.substr(0, prefix.length) === prefix;
+};
+
+var _global;
+exports.getGlobal = function () {
+  if (_global) {
+    return _global;
+  } else if (_global !== false) {
+    try {
+      return _global = require('./lisp/global.lijsp.js');
+    } catch (e) {
+      console.warn('This error is expected when bootstrapping', e && e.stack);
+    }
+  }
 };

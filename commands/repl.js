@@ -4,12 +4,22 @@ var repl = require('repl'),
     fs = require('fs'),
     path = require('path'),
     lijsp = require('../lijsp'),
-    lispEnv = require('../lisp/global.lijsp.js'),
     datum = require('../datum'),
+    util = require('../util'),
+    lispEnv = util.getGlobal(),
+    nodeUtil = require('util'),
     vm = require('vm');
 
 exports.execute = function (args) {
-  var lines = [];
+  var lines = [],
+      writer = !args.defaultInspect ? util.inspect :
+        function (x, opts) {
+          if (!opts) {
+            opts = {};
+          }
+          opts.customInspect = false;
+          return nodeUtil.inspect(x, opts);
+        };
   if (args.historyPersist) {
     try {
       lines = require(args.historyPersist);
@@ -37,7 +47,7 @@ exports.execute = function (args) {
           readJs = 'macroexpand(' + readJs + ')';
         }
         ast = vm.runInContext(readJs, context, filename);
-        console.log(require('util').inspect(ast, {
+        console.log(writer(ast, {
           colors: true,
           depth: 100
         }));
@@ -74,7 +84,8 @@ exports.execute = function (args) {
       callback(result.error, result.value);
     },
     // We always send lispRepl `undefined` when in showAst mode.
-    ignoreUndefined: args.showAst
+    ignoreUndefined: args.showAst,
+    writer: writer
   });
 
   // Required for def to work

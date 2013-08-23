@@ -24,7 +24,6 @@ function Compiler(parser, opts) {
   this.opts = opts || {};
   this.parser = parser;
   this.expander = this.opts.expander || expander.makeExpander();
-  this.expander.compiler = this;
   this.output = new stream.WritableStream();
   this.compileAst = util.bind(this.compileAst, this);
 }
@@ -44,7 +43,7 @@ Compiler.prototype.compileStatement = function (ast) {
 };
 
 Compiler.prototype.compileAst = function (ast) {
-  ast = this.expander.expand(ast);
+  ast = this.expander.expand(ast, this);
   compiled = this.expand(ast);
   if (compiled === ast) {
     throw new CompileError('Can\'t compile: ' + ast +
@@ -171,6 +170,18 @@ exports.makeCompiler = function (parser, opts) {
       }
       return open + 'function ' + c_name + arglistpile(args) + ' { ' +
         c_body + ' }' + close;
+    });
+
+  compiler.addRule(datum.list(
+    expander.type(datum.ForOperator),
+    datum.symbol('$setup'),
+    datum.symbol('$$body')), function (ast, setup, body) {
+      var statementize = function (x) {
+        return datum.list(datum.symbol('statements'), x);
+      };
+      return 'for (' + compiler.compileAst(statementize(setup)) + ') {' +
+          compiler.compileAst(statementize(body)) +
+        '}';
     });
 
   compiler.addRule(datum.list(
