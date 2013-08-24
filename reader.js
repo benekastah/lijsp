@@ -241,6 +241,9 @@ exports.makeParser = function (lex) {
       [lexer.Symbol, function (s) { return new datum.Symbol(s.matchText); }],
       [lexer.Number, function (n) { return +n.matchText; }],
       [lexer.String, function (s) { return s.matchText; }],
+      [lexer.JSCode, function (js) {
+        return new datum.JavaScriptCode(js.reMatch[1]);
+      }],
       'Cons',
       'List',
       'Quote').

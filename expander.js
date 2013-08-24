@@ -46,6 +46,7 @@ Expander.prototype.expand = function (ast, compiler) {
   } finally {
     this.compiler = oldCompiler;
     if (err != null) {
+      console.error(err.message);
       throw err;
     }
   }
@@ -223,37 +224,56 @@ exports.test = function (f) {
 exports.makeExpander = function () {
   var e = new Expander();
 
+  var defSyntax = function (pattern, body, rulesetName) {
+    var args = datum.cons(
+      datum.symbol('' + Math.random()),
+      exports.getTemplateVariables(pattern));
+    var lambda = datum.concat(
+      datum.list(datum.symbol('lambda'), args),
+      body);
+
+    var jsc = new datum.JavaScriptCode(
+      e.compiler.compileAst(datum.list(
+        datum.list(
+          new datum.PropertyAccessOperator(),
+          datum.symbol('lisp-expander'),
+          'addRule'),
+        datum.list(
+          datum.symbol('quote'),
+          pattern),
+        lambda,
+        rulesetName)));
+
+    var fn;
+    try {
+      fn = util.getGlobal().lisp_eval(lambda);
+      e.addRule(pattern, fn, rulesetName);
+    } catch (e) {
+      console.warn(e);
+    }
+
+    return jsc;
+  };
+
   e.addRule(datum.list(
     datum.symbol('defsyntax'),
     datum.symbol('$pattern'),
     datum.symbol('$$body')), function (ast, pattern, body) {
-      var args = datum.cons(
-        datum.symbol('' + Math.random()),
-        exports.getTemplateVariables(pattern));
-      var lambda = datum.concat(
-        datum.list(datum.symbol('lambda'), args),
-        body);
+      return defSyntax(pattern, body);
+    });
 
-      var jsc = new datum.JavaScriptCode(
-        e.compiler.compileAst(datum.list(
-          datum.list(
-            new datum.PropertyAccessOperator(),
-            datum.symbol('lisp-expander'),
-            'addRule'),
-          datum.list(
-            datum.symbol('quote'),
-            pattern),
-          lambda)));
+  e.addRule(datum.list(
+    datum.symbol('defsyntax-early'),
+    datum.symbol('$pattern'),
+    datum.symbol('$$body')), function (ast, pattern, body) {
+      return defSyntax(pattern, body, e.EARLY_RULESET_NAME);
+    });
 
-      var fn;
-      try {
-        fn = util.getGlobal().lisp_eval(lambda);
-        e.addRule(pattern, fn);
-      } catch (e) {
-        console.warn(e);
-      }
-
-      return jsc;
+  e.addRule(datum.list(
+    datum.symbol('defsyntax-late'),
+    datum.symbol('$pattern'),
+    datum.symbol('$$body')), function (ast, pattern, body) {
+      return defSyntax(pattern, body, e.LATE_RULESET_NAME);
     });
 
   e.addRule(datum.list(
@@ -282,7 +302,7 @@ exports.makeExpander = function () {
         return datum.list(
           new datum.VarOperator(),
           datum.list(
-            a, datum.list(
+            new datum.JavaScriptCode(a.escapedName()), datum.list(
               new datum.Operator('='),
               datum.list(
                 new datum.PropertyAccessOperator(),
@@ -297,12 +317,6 @@ exports.makeExpander = function () {
     datum.symbol('$fileName')), function (ast, fileName) {
       var opts = e.compiler.opts,
           isGlobal, requireF;
-      if (opts.fileCompiler) {
-        opts.fileCompiler(fileName.name);
-      } else {
-        console.warn('No file compiler registered. ' +
-                     'You will have to compile each file on your own.');
-      }
 
       var appDirName = path.join(opts.appName, '/');
       if (util.startsWith(fileName.name, appDirName)) {
@@ -312,7 +326,15 @@ exports.makeExpander = function () {
           requireF = './' + requireF;
         }
       } else {
+        isGlobal = true;
         requireF = path.join('lijsp/lisp', fileName.name);
+      }
+
+      if (opts.fileCompiler) {
+        !isGlobal && opts.fileCompiler(fileName.name);
+      } else {
+        console.warn('No file compiler registered. ' +
+                     'You will have to compile each file on your own.');
       }
 
       return datum.list(

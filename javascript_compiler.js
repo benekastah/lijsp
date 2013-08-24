@@ -7,7 +7,9 @@ var stream = require('./stream'),
     expander = require('./expander'),
     undefined;
 
-function CompileError(m) {
+function CompileError(compiler, ast) {
+  var m = 'Can\'t compile ' + util.inspect(ast) +
+    ' in ' + compiler.opts.currentFile;
   CompileError.super_.call(this, m);
 }
 exports.CompileError = CompileError;
@@ -46,8 +48,7 @@ Compiler.prototype.compileAst = function (ast) {
   ast = this.expander.expand(ast, this);
   compiled = this.expand(ast);
   if (compiled === ast) {
-    throw new CompileError('Can\'t compile: ' + ast +
-      ' [' + (ast && ast.constructor && ast.constructor.name) + ']');
+    throw new CompileError(this, ast);
   }
   return compiled;
 };

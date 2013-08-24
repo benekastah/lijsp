@@ -130,6 +130,8 @@ defStringToken('StringCloseEscaped', '\\"');
 defStringToken('StringBody', /[^"]/);
 defStringToken('StringClose', '"');
 
+defToken('JSCode', /@\{(.+)\}/);
+
 defToken('Quote', '\'');
 defToken('QuasiQuote', '`');
 defToken('UnquoteSplicing', ',@');

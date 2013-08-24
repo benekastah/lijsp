@@ -9,7 +9,7 @@ function JavaScriptCode(code) {
 }
 exports.JavaScriptCode = JavaScriptCode;
 JavaScriptCode.prototype.inspect = function () {
-  return '[' + JavaScriptCode.name + ' ' + this.code + ']';
+  return util.color('@{' + this.code + '}', 'magenta');
 };
 
 function Symbol(name) {
@@ -110,7 +110,14 @@ function Operator(name) {
   this.name = name;
 }
 exports.Operator = Operator;
-util.inspectable(Operator);
+Operator.prototype.inspect = function () {
+  return util.color('@<' + this.name + '>', 'magenta');
+};
+
+var inspectableOperator = function (Class, name) {
+  Class.prototype.inspect = util.bind(
+    Operator.prototype.inspect, {name: name});
+};
 
 exports.specialOperators = [];
 var makeSpecialOperator = function (f) {
@@ -119,41 +126,41 @@ var makeSpecialOperator = function (f) {
 };
 
 function TernaryOperator() {}
-util.inspectable(TernaryOperator);
+inspectableOperator(TernaryOperator, '?:');
 makeSpecialOperator(TernaryOperator);
 
 
 function VoidOperator() {}
-util.inspectable(VoidOperator);
+inspectableOperator(VoidOperator, 'void');
 makeSpecialOperator(VoidOperator);
 
 
 function ThisOperator() {}
-util.inspectable(ThisOperator);
+inspectableOperator(ThisOperator, 'this');
 makeSpecialOperator(ThisOperator);
 
 
 function VarOperator() {}
-util.inspectable(VarOperator);
+inspectableOperator(VarOperator, 'var');
 makeSpecialOperator(VarOperator);
 
 
 function FunctionOperator() {}
-util.inspectable(FunctionOperator);
+inspectableOperator(FunctionOperator, 'function');
 makeSpecialOperator(FunctionOperator);
 
 
 function ReturnOperator() {}
-util.inspectable(ReturnOperator);
+inspectableOperator(ReturnOperator, 'return');
 makeSpecialOperator(ReturnOperator);
 
 
 function PropertyAccessOperator() {}
-util.inspectable(PropertyAccessOperator);
+inspectableOperator(PropertyAccessOperator, '.');
 makeSpecialOperator(PropertyAccessOperator);
 
 function ForOperator() {}
-util.inspectable(ForOperator);
+inspectableOperator(ForOperator, 'for');
 makeSpecialOperator(ForOperator);
 
 function Quote() {}

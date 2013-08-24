@@ -113,9 +113,9 @@ function AbstractError(msg) {
 exports.AbstractError = AbstractError;
 exports.inherits(AbstractError, Error);
 
-exports.inspectable = function (Class) {
+exports.inspectable = function (Class, fn) {
   Class.prototype.inspect = function () {
-    return '[' + Class.name + ']';
+    return '[' + Class.name + (fn ? ' ' + fn.call(this) : '') + ']';
   };
 };
 

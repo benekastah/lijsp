@@ -51,24 +51,40 @@
   (@<var> (args (map (lambda (x) (inspect x)) arguments)))
   (apply (@<.> console 'log) args))
 
-(def (+)
-  (reduce (lambda (a b) (@<+> a b)) 0 arguments))
+(defsyntax (+ $$rest)
+  `(@<+> ,@$$rest))
 
-(def (-)
-  (@<?:> (@<===> (@<.> arguments 'length) 1)
-    (@<-> (@<.> arguments 0))
-    (reduce (lambda (a b) (@<-> a b)) arguments)))
+(def (+ a b)
+  (+ a b))
 
-(def (*)
-  (reduce (lambda (a b) (@<*> a b)) 1 arguments))
+(defsyntax (- $$rest)
+  `(@<-> ,@$$rest))
 
-(def (/)
-  (reduce (lambda (a b) (@</> a b)) arguments))
+(def (- a b)
+  (- a b))
 
-(def (% a b)
-  (@<%> a b))
+(defsyntax (* $$rest)
+  `(@<*> ,@$$rest))
+
+(def (* a b)
+  (* a b))
+
+(defsyntax (/ $$rest)
+  `(@</> ,@$$rest))
+
+(def (/ a b)
+  (/ a b))
+
+(defsyntax (mod $$rest)
+  `(@<%> ,@$$rest))
+
+(def (mod a b)
+  (mod a b))
 
 (def ** (@<.> Math 'pow))
+
+(defsyntax (< $$rest)
+  `(@<<> ,@$$rest))
 
 (def (< a b)
   (@<<> a b))
