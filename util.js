@@ -1,4 +1,7 @@
 
+var util = exports;
+var path = require('path');
+
 var _type = Object.prototype.toString;
 exports.type = function (x) {
   return _type.call(x);
@@ -131,9 +134,24 @@ var color = exports.color = function (x) {
   return x;
 };
 
+var inspectObject = function (o) {
+  var datum = require('./datum');
+  var call = datum.list(datum.symbol('object')),
+      step = call;
+  for (var k in o) {
+    step = step.right = datum.cons(datum.cons(k, o[k]));
+  }
+  return util.lispInspect(call);
+};
+
+var inspectFunction = function (f) {
+  var datum = require('./datum');
+  return util.lispInspect(new datum.JavaScriptCode('(' + f + ')'));
+};
+
 var re_stringQuote = /"/g;
-exports.inspect = function (x) {
-  if (x && x.inspect) {
+exports.lispInspect = function (x) {
+  if (x && exports.type(x.inspect) === '[object Function]') {
     return x.inspect();
   } else if (x === null) {
     return color('()', 'white');
@@ -145,9 +163,11 @@ exports.inspect = function (x) {
     case '[object Number]':
       return color(x, 'yellow');
     case '[object Object]':
-      return require('./datum').inspectObject(x);
+      return inspectObject(x);
     case '[object String]':
       return color('"' + x.replace(re_stringQuote, '\\"') + '"', 'cyan');
+    case '[object Function]':
+      return inspectFunction(x);
     default:
       return '' + x;
   }
@@ -157,15 +177,19 @@ exports.startsWith = function (s, prefix) {
   return s.substr(0, prefix.length) === prefix;
 };
 
-var _global;
-exports.getGlobal = function () {
-  if (_global) {
-    return _global;
-  } else if (_global !== false) {
-    try {
-      return _global = require('./lisp/global.lijsp.js');
-    } catch (e) {
-      console.warn('This error is expected when bootstrapping', e && e.stack);
+(function () {
+  var globalFound = false;
+  var globalPath = path.join(__dirname, '/lisp/global.lijsp.js');
+  var fs;
+  try {
+    fs = require('fs');
+  } catch (e) {}
+  exports.getGlobal = function () {
+    if (!globalFound && fs && fs.existsSync(globalPath)) {
+      globalFound = true;
+      return exports.getGlobal();
+    } else if (globalFound || !fs) {
+      return require(globalPath);
     }
-  }
-};
+  };
+})();

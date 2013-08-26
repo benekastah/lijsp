@@ -1,0 +1,21 @@
+
+(defsyntax (describe $thing $$body)
+  `(@{describe} ,$thing (lambda () ,@$$body)))
+
+(defsyntax (it $should $$body)
+  `(@{it} ,$should (lambda () ,@$$body)))
+
+(def-require assert)
+(use-from assert
+          (equal as assert-eq))
+
+(def (assert-eq-to-precision precision nums)
+  (if nums
+    (assert-eq
+      ((get (first nums) 'toFixed) precision)
+      ((get (second nums) 'toFixed) precision))
+    (assert-eq-to-precision precision (tail nums))))
+
+(def (assert-nums-eq)
+  (apply assert-eq-to-precision 15 arguments ()))
+

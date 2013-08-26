@@ -8,7 +8,7 @@ var stream = require('./stream'),
     undefined;
 
 function CompileError(compiler, ast) {
-  var m = 'Can\'t compile ' + util.inspect(ast) +
+  var m = 'Can\'t compile ' + util.lispInspect(ast) +
     ' in ' + compiler.opts.currentFile;
   CompileError.super_.call(this, m);
 }
@@ -95,6 +95,12 @@ exports.makeCompiler = function (parser, opts) {
           datum.list(
             datum.symbol('Operator'),
             expr.name));
+      } else if (expr instanceof datum.JavaScriptCode) {
+        expr = datum.list(
+          new datum.Operator('new'),
+          datum.list(
+            datum.symbol('JavaScriptCode'),
+            expr.code));
       }
 
       for (var i = 0, len = datum.specialOperators.length; i < len; i++) {
@@ -117,10 +123,10 @@ exports.makeCompiler = function (parser, opts) {
   });
 
   var compileVarItem = function (x) {
-    if (x instanceof datum.Symbol) {
-      return compiler.compileAst(x);
-    } else if (datum.isList(x)) {
+    if (datum.isList(x)) {
       return joinpile(' = ', x);
+    } else {
+      return compiler.compileAst(x);
     }
   };
 
@@ -173,16 +179,42 @@ exports.makeCompiler = function (parser, opts) {
         c_body + ' }' + close;
     });
 
+  var re_lastSemicolon = /;$/;
+  var re_parenWrapped = /^\(.*\)$/;
   compiler.addRule(datum.list(
     expander.type(datum.ForOperator),
     datum.symbol('$setup'),
     datum.symbol('$$body')), function (ast, setup, body) {
-      var statementize = function (x) {
-        return datum.list(datum.symbol('statements'), x);
+      var statementize = function (x, trimLastSemi) {
+        var result = compiler.compileAst(
+          datum.cons(datum.symbol('statements'), x));
+        if (trimLastSemi) {
+          result = result.replace(re_lastSemicolon, '');
+        }
+        return result;
       };
-      return 'for (' + compiler.compileAst(statementize(setup)) + ') {' +
-          compiler.compileAst(statementize(body)) +
+      var wrapParens = function (code) {
+        if (!re_parenWrapped.test(code)) {
+          return '(' + code + ')';
+        } else {
+          return code;
+        }
+      };
+      return 'for ' + wrapParens(statementize(setup, true)) + ' {' +
+          statementize(body) +
         '}';
+    });
+
+  compiler.addRule(datum.list(
+    expander.type(datum.TryOperator),
+    datum.symbol('$try'),
+    datum.list(
+      expander.type(datum.CatchOperator),
+      datum.symbol('$err'),
+      datum.symbol('$catch'))), function (ast, $try, $err, $catch) {
+      return 'try { ' + compiler.compileAst($try) +
+        ' } catch (' + compiler.compileAst($err) +
+        ') { ' + compiler.compileAst($catch) +  ' }';
     });
 
   compiler.addRule(datum.list(

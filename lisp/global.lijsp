@@ -1,9 +1,9 @@
 
-(@<var> (datum (require "../datum")))
-(@<var> (compiler (require "../javascript_compiler")))
-(@<var> (expander (require "../expander")))
-(@<var> (reader (require "../reader")))
-(@<var> (util (require "../util")))
+(var (datum (require "../datum")))
+(var (compiler (require "../javascript_compiler")))
+(var (expander (require "../expander")))
+(var (reader (require "../reader")))
+(var (util (require "../util")))
 
 (def root (@<?:> (@<===> (@<typeof> global) "undefined")
                  window
@@ -18,16 +18,19 @@
           ;; Operators
           Operator TernaryOperator VoidOperator ThisOperator VarOperator
           FunctionOperator ReturnOperator PropertyAccessOperator
+          JavaScriptCode
 
           (isList as list?)
           (isPair as pair?))
 
-(use-from util
-          inspect)
-
 ;; This needs to be defined before any defsyntax calls
 (def lisp-expander ((@<.> expander 'makeExpander)))
 (def lisp_expander lisp-expander)
+
+(use-from util
+          (lispInspect as lisp-inspect))
+
+(defsyntax inspect 'lisp-inspect)
 
 (def (array)
   ((@<.> util 'slice) arguments))
@@ -44,68 +47,15 @@
 
 
 (defsyntax (print $$stuff)
-  (@<var> (args (map (lambda (x) `(inspect ,x)) $$stuff)))
+  (var (args (map (lambda (x) `(inspect ,x)) $$stuff)))
   `((@<.> console 'log) ,@args))
 
 (def (printfn)
-  (@<var> (args (map (lambda (x) (inspect x)) arguments)))
+  (var (args (map (lambda (x) (inspect x)) arguments)))
   (apply (@<.> console 'log) args))
 
-(defsyntax (+ $$rest)
-  `(@<+> ,@$$rest))
-
-(def (+ a b)
-  (+ a b))
-
-(defsyntax (- $$rest)
-  `(@<-> ,@$$rest))
-
-(def (- a b)
-  (- a b))
-
-(defsyntax (* $$rest)
-  `(@<*> ,@$$rest))
-
-(def (* a b)
-  (* a b))
-
-(defsyntax (/ $$rest)
-  `(@</> ,@$$rest))
-
-(def (/ a b)
-  (/ a b))
-
-(defsyntax (mod $$rest)
-  `(@<%> ,@$$rest))
-
-(def (mod a b)
-  (mod a b))
-
-(def ** (@<.> Math 'pow))
-
-(defsyntax (< $$rest)
-  `(@<<> ,@$$rest))
-
-(def (< a b)
-  (@<<> a b))
-
-(def (> a b)
-  (@<>> a b))
-
-(def (<= a b)
-  (@<<=> a b))
-
-(def (>= a b)
-  (@<>=> a b))
-
-(defsyntax (or $$args)
-  `(@<||> ,@$$args))
-
-(defsyntax (and $$args)
-  `(@<&&> ,@$$args))
-
-(def (not x)
-  (@<!> x))
+(def (nil? x)
+  (@<==> x ()))
 
 ;; Set up read
 (def (make-parser s)
@@ -122,22 +72,26 @@
   ((@<.> lisp-compiler 'compileAst) ast))
 (def to_js to-js)
 
-(def (lisp-eval ast)
-  (eval (to-js ast)))
-(def lisp_eval lisp-eval)
 (def js-eval eval)
-(defsyntax eval 'lisp-eval)
+(defsyntax (eval $ast)
+  `(@{eval} (to-js ,$ast)))
+
+(def (lisp-eval ast)
+  (@{eval} (to-js ast)))
+(def lisp_eval lisp-eval)
 
 (defsyntax (if $a $b $c) `(@<?:> ,$a ,$b ,$c))
 
 (defsyntax (get $obj $$props) `(@<.> ,$obj ,@$$props))
-; (defsyntax ('$sym $obj) `(get ,$obj ',$sym))
-
-(defsyntax (set ($obj $$props) $val)
-  `(@<=> (get ,$obj ,@$$props) ,$val))
 
 (defsyntax (set $x $val)
   `(@<=> ,$x ,$val))
+
+(defsyntax (set ($obj $$props) $val)
+  `(set (get ,$obj ,@$$props) ,$val))
+
+(defsyntax (set-def $x $val)
+  `(set ,$x (set (exports ',$x ,$val))))
 
 (def (rmap fn ls)
   (map (lambda (x)
@@ -147,5 +101,26 @@
 
 (defsyntax (let $vars $$body)
   `((lambda ()
-      (@<var> ,@$vars)
+      (var ,@$vars)
       ,@$$body)))
+
+(defsyntax (def-macro-fn $macro)
+  `(def (,$macro)
+     (eval (concat (list ',$macro) arguments))))
+
+(@<try>
+  (statements
+    ;; Get logic functions
+    (def-require ("./modules/logic.lijsp.js" as lisp/modules/logic))
+    (use-from lisp/modules/logic
+              < > <= >= not)
+
+    ;; Get math functions
+    (def-require ("./modules/math.lijsp.js" as lisp/modules/math))
+    (use-from lisp/modules/math
+              + - * / mod ** bitwise-and bitwise-or bitwise-xor
+              bitwise-not bitwise-shift
+              ))
+  (@<catch> e
+            (@<&&> (@<!> (@<===> (@<.> e 'code) "MODULE_NOT_FOUND"))
+                   ((@<.> console 'error) e))))

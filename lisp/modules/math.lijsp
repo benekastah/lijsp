@@ -1,0 +1,46 @@
+
+(defsyntax (def-macro-fn $macro)
+  `(def (,$macro)
+     (eval (concat (list ',$macro) arguments))))
+
+(defsyntax (def-math-fn $sym $op)
+  `(statements
+     (defsyntax (,$sym $$rest)
+      (concat (list ',$op)
+              (map (lambda (x)
+                     (list '@<+> x)) $$rest)))
+     (def-macro-fn ,$sym)))
+
+(def-math-fn + @<+>)
+(def-math-fn - @<->)
+(def-math-fn * @<*>)
+(def-math-fn / @</>)
+
+(defsyntax (mod $a $b)
+  `(@<%> ,$a ,$b))
+
+(def (mod a b)
+  (mod a b))
+
+(def ** (@<.> Math 'pow))
+
+(def (bitwise-and a b)
+  (@<&> a b))
+
+(def (bitwise-or a b)
+  (@<|> a b))
+
+(def (bitwise-xor a b)
+  (@<^> a b))
+
+(def (bitwise-not a)
+  (@<~> a))
+
+(def (bitwise-shift n bit-count fill-zero)
+  (if (@<>> bit-count 0)
+    (@<<<> n bit-count)
+    (if (@<<> bit-count 0)
+      (if fill-zero
+        (@<>>>> n (- bit-count))
+        (@<>>> n (- bit-count)))
+      n)))

@@ -15,4 +15,6 @@ npm-debug.log
 
 .lijsp_repl_history.json
 node_modules/
-lisp/*.js
+lisp/**/*.js
+lisp/**/package.json
+test/lisp/test/

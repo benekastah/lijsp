@@ -53,15 +53,24 @@ replParser.addArgument(['-i', '--defaultInspect'], {
 var compileParser = subparsers.addParser('compile', {
   addHelp: true
 });
-compileParser.addArgument(['-f', '--file'], {
-  help: 'The main file to compile'
+compileParser.addArgument(['-i', '--input'], {
+  help: 'A directory or file to compile. If a directory is provided, ' +
+    'all .lijsp files will be recursively found and compiled.'
 });
 compileParser.addArgument(['-o', '--outdir'], {
   help: 'The path to the directory for compiler output'
 });
-compileParser.addArgument(['-i', '--indentLevel'], {
+compileParser.addArgument(['-l', '--indentLevel'], {
   help: 'The indent level of the generated javascript code',
   defaultValue: 2
+});
+compileParser.addArgument(['-p', '--pretty'], {
+  help: 'Whether the javascript output should be pretty',
+  action: 'storeTrue'
+});
+compileParser.addArgument(['-u', '--optimized'], {
+  help: 'Whether the javascript output should be compressed.',
+  action: 'storeTrue'
 });
 
 var args = argparser.parseArgs();

@@ -1,11 +1,17 @@
 #!/bin/sh
 
-INPUT='lisp/*.lijsp'
-OUTPUT='lisp/'
-echo "Cleaning previously compiled files..."
-for JS in `find $OUTPUT -name "*.js"`; do
-  rm $JS
-done
-echo "Compiling $INPUT to $OUTPUT"
-bin/lijsp compile -f $INPUT -o $OUTPUT
-echo "Done."
+doCompileThing () {
+  INPUT="$1"
+  OUTPUT="$2"
+  echo "Cleaning previously compiled files..."
+  for JS in `find $OUTPUT -name "*.js"`; do
+    rm $JS
+  done
+  echo "Compiling $INPUT to $OUTPUT"
+  bin/lijsp compile -i $INPUT -o $OUTPUT -p
+  echo "Done."
+}
+
+doCompileThing 'lisp/global.lijsp' 'lisp/'
+doCompileThing 'lisp/modules' 'lisp/modules'
+doCompileThing 'test/lisp/global.lijsp' 'test/lisp/test'

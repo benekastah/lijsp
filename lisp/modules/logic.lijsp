@@ -1,0 +1,31 @@
+
+(defsyntax (def-logic-fn $sym $op)
+  `(statements
+     (defsyntax (,$sym $$rest)
+        (if (@<>=> (length $$rest) 2)
+          (list '@<&&>
+                (list ',$op (first $$rest) (second $$rest))
+                (cons ',$sym (tail $$rest)))
+          'true))
+     (def-macro-fn ,$sym)))
+
+(def-logic-fn < @<<>)
+(def-logic-fn > @<>>)
+(def-logic-fn <= @<<=>)
+(def-logic-fn >= @<>=>)
+(def-logic-fn = @<===>)
+(def-logic-fn eq @<==>)
+(def-logic-fn not= @<!==>)
+(def-logic-fn not-eq @<!=>)
+
+(defsyntax (not $a)
+  `(@<!> ,$a))
+
+(def (not a)
+  (not a))
+
+(defsyntax (or $$args)
+  `(@<||> ,@$$args))
+
+(defsyntax (and $$args)
+  `(@<&&> ,@$$args))

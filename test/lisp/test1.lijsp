@@ -1,4 +1,0 @@
-
-(import-from lisp/test/test2 fact)
-
-(print (fact 5))

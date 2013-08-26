@@ -12,7 +12,7 @@ var repl = require('repl'),
 
 exports.execute = function (args) {
   var lines = [],
-      writer = !args.defaultInspect ? util.inspect :
+      writer = !args.defaultInspect ? util.lispInspect :
         function (x, opts) {
           if (!opts) {
             opts = {};

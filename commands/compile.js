@@ -28,9 +28,6 @@ exports.execute = function (args) {
 
   var handleError = function (err) {
     if (err) {
-      process.nextTick(function () {
-        process.exit(-1);
-      });
       if (err.stack) {
         console.error(err.stack);
       }
@@ -75,32 +72,49 @@ exports.execute = function (args) {
     cb(err, stream.data);
   };
 
-  var prettifyOutput = function (data) {
+  var uglifyRewrite = function (data, opts, file) {
     if (UglifyJS) {
+      if (!opts) {
+        opts = {};
+      }
+      opts.fromString = true;
       try {
-        return UglifyJS.minify(data, {
-          fromString: true,
-          warnings: args.verbose,
-          mangle: false,
-          output: {
-            beautify: true,
-            indent_level: args.indentLevel,
-            comments: true
-          },
-          compress: {
-            hoist_vars: true,
-            hoist_funs: true,
-            join_vars: false,
-            sequences: false,
-            drop_debugger: false,
-            unused: true
-          }
-        }).code;
+        data = UglifyJS.minify(data, opts).code;
       } catch (e) {
-        console.error(e);
+        console.error(file, e);
+        console.error(data)
       }
     }
     return data;
+  };
+
+  var prettifyOutput = function (data, file) {
+    return uglifyRewrite(data, {
+      warnings: args.verbose,
+      mangle: false,
+      output: {
+        beautify: true,
+        indent_level: args.indentLevel,
+        comments: true
+      },
+      compress: {
+        hoist_vars: true,
+        hoist_funs: true,
+        join_vars: false,
+        sequences: false,
+        drop_debugger: false,
+        unused: true
+      }
+    }, file);
+  };
+
+  var optimizeOutput = function (data, file) {
+    return uglifyRewrite(data, {
+      compress: {
+        warnings: true,
+        unused: true
+      }
+    }, file);
   };
 
   var appendToOutput = function (err, fpath, outdir, data, cb) {
@@ -109,7 +123,11 @@ exports.execute = function (args) {
       cb && cb();
       return;
     }
-    data = prettifyOutput(data) + '\n\n';
+    if (args.pretty) {
+      data = prettifyOutput(data, fpath) + '\n\n';
+    } else if (args.optimized) {
+      data = optimizeOutput(data, fpath);
+    }
     if (outdir) {
       var jsFname;
       if (fpath) {
@@ -136,18 +154,31 @@ exports.execute = function (args) {
     };
   };
 
-  var createPackage = function () {
+  var createPackage = function (mainFile) {
     if (outdir) {
       var lijspDir = path.join(__dirname, '..');
       var nmDir = path.join(outdir, 'node_modules');
       mkdirp(nmDir, function (err) {
         handleError(err);
-        exec('touch package.json', {cwd: outdir}, handleError);
-        var dest = path.join(nmDir, 'lijsp');
-        fs.exists(dest, function (exists) {
-          if (!exists) {
-            fs.symlink(lijspDir, dest, 'dir', handleError);
+
+        var pjsonFile = path.join(outdir, 'package.json');
+        fs.readFile(pjsonFile, 'utf8', function (err, data) {
+          if (err && err.code !== 'ENOENT') {
+            handleError(err);
           }
+          var pjson = data ? JSON.parse(data) : {};
+          if (mainFile) {
+            pjson.main = path.basename(mainFile) + '.js';
+          }
+          var pjsonString = JSON.stringify(pjson, null, 2);
+
+          fs.writeFile(pjsonFile, pjsonString, handleError);
+          var dest = path.join(nmDir, 'lijsp');
+          fs.exists(dest, function (exists) {
+            if (!exists) {
+              fs.symlink(lijspDir, dest, 'dir', handleError);
+            }
+          });
         });
       });
     }
@@ -178,6 +209,7 @@ exports.execute = function (args) {
     }
     try {
       data = fs.readFileSync(f, 'utf8');
+      console.log('Compiling ' + f);
     } catch (e) {
       err = e;
     }
@@ -188,15 +220,60 @@ exports.execute = function (args) {
   };
 
 
+  var re_isNodeModules = /(^|\/)node_modules$/;
+  var walk = function (item, cb) {
+    fs.stat(item, function (err, stats) {
+      handleError(err);
+      if (stats.isFile()) {
+        cb(item);
+      } else if (stats.isDirectory()) {
+        if (re_isNodeModules.test(item)) {
+          return;
+        }
+        fs.readdir(item, function (err, items) {
+          handleError(err);
+          for (var i = 0, len = items.length; i < len; i++) {
+            walk(path.join(item, items[i]), cb);
+          }
+        });
+      }
+    });
+  };
+
+  var re_isLijsp = /\.lijsp$/;
+
   var outdir = args.outdir;
   var appDir, appName;
   var start = function (err) {
     handleError(err);
-    createPackage();
-    if (args.file) {
-      appDir = path.dirname(args.file);
-      appName = path.basename(appDir);
-      compileFile(args.file);
+    if (args.input) {
+      fs.stat(args.input, function (err, stats) {
+        handleError(err);
+        if (stats.isDirectory()) {
+          appDir = args.input;
+          appName = path.basename(appDir);
+          var main = path.join(args.input, 'main.lijsp');
+          fs.stat(main, function (err, stats) {
+            if ((err && err.code === 'ENOENT') ||
+                (stats && !stats.isFile())) {
+              createPackage();
+            } else {
+              handleError(err);
+              createPackage(main);
+            }
+            walk(args.input, function (f) {
+              if (re_isLijsp.test(f)) {
+                compileFile(f);
+              }
+            });
+          });
+        } else if (stats.isFile()) {
+          createPackage(args.input);
+          appDir = path.dirname(args.input);
+          appName = path.basename(appDir);
+          compileFile(args.input);
+        }
+      });
     } else {
       compileStdin(makeOutputAppender(null, outdir, handleError));
     }

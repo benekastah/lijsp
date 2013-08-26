@@ -1,4 +1,6 @@
 
+var expander = exports;
+
 var datum = require('./datum'),
     util = require('./util'),
     path = require('path'),
@@ -59,6 +61,9 @@ Expander.prototype.expandRuleset = function (setName, ast) {
     for (var i = 0, len = ruleset.length; i < len; i++) {
       rule = ruleset[i];
       if ((match = exports.compare(rule.comparator, ast))) {
+        if (typeof rule.action !== 'function') {
+          console.log(rule);
+        }
         expandedAst = rule.action.apply(rule, match);
         return this.expandExpanded ? this.expand(expandedAst) : expandedAst;
       }
@@ -245,11 +250,10 @@ exports.makeExpander = function () {
         rulesetName)));
 
     var fn;
-    try {
-      fn = util.getGlobal().lisp_eval(lambda);
+    var glob = util.getGlobal();
+    if (glob) {
+      fn = glob.lisp_eval(lambda);
       e.addRule(pattern, fn, rulesetName);
-    } catch (e) {
-      console.warn(e);
     }
 
     return jsc;
@@ -300,9 +304,9 @@ exports.makeExpander = function () {
         return datum.list(datum.symbol('def'), a.left, lambda);
       } else {
         return datum.list(
-          new datum.VarOperator(),
+          datum.symbol('var'),
           datum.list(
-            new datum.JavaScriptCode(a.escapedName()), datum.list(
+            a, datum.list(
               new datum.Operator('='),
               datum.list(
                 new datum.PropertyAccessOperator(),
@@ -311,6 +315,67 @@ exports.makeExpander = function () {
               b.left)));
       }
     });
+
+
+  var escapedSymbol = function (s) {
+    return new datum.JavaScriptCode(s.escapedName());
+  };
+
+  e.addRule(datum.list(
+    datum.symbol('var'),
+    datum.symbol('$$rest')), function (ast, rest) {
+      return datum.cons(new datum.VarOperator(), datum.map(function (item) {
+        if (datum.isList(item)) {
+          var fst = datum.first(item);
+          if (fst instanceof datum.Symbol) {
+            return datum.cons(
+              escapedSymbol(fst),
+              datum.tail(item));
+          } else {
+            return item;
+          }
+        } else if (item instanceof datum.Symbol) {
+          return escapedSymbol(item);
+        } else {
+          return item;
+        }
+      }, rest));
+    });
+
+  e.addRule(datum.list(
+    datum.symbol('def-require'),
+    expander.type(datum.Symbol),
+    datum.symbol('$$rest')), function (ast, rest) {
+      var sym = datum.second(ast);
+      var result = datum.list(
+        datum.symbol('def-require'),
+        datum.list(sym, datum.symbol('as'), sym));
+      return rest ? datum.concat(result, rest) : result;
+    });
+
+  e.addRule(datum.list(
+    datum.symbol('def-require'),
+    datum.list(
+      datum.symbol('$req'),
+      datum.symbol('as'),
+      datum.symbol('$sym'),
+    datum.symbol('$$rest'))), function (ast, req, sym, rest) {
+        if (req instanceof datum.Symbol) {
+          req = req.name;
+        }
+        var result = datum.list(
+          datum.symbol('def'),
+          sym,
+          datum.list(
+            datum.symbol('require'),
+            req));
+        return rest ?
+          datum.concat(
+            datum.list(
+              datum.symbol('statements'), result),
+            rest) :
+          result;
+      });
 
   e.addRule(datum.list(
     datum.symbol('import'),
@@ -338,11 +403,11 @@ exports.makeExpander = function () {
       }
 
       return datum.list(
-        datum.symbol('def'),
-        fileName,
+        datum.symbol('def-require'),
         datum.list(
-          datum.symbol('require'),
-          requireF + '.lijsp.js'));
+          requireF + '.lijsp.js',
+          datum.symbol('as'),
+          fileName));
     });
 
   e.addRule(datum.list(
@@ -358,10 +423,34 @@ exports.makeExpander = function () {
     });
 
   e.addRule(datum.list(
+    datum.symbol('import-all-from'),
+    datum.symbol('$module')), function (ast, mod) {
+      var _k = datum.gensym('k');
+      return datum.list(
+        datum.symbol('statements'),
+        datum.list(datum.symbol('import'), mod),
+        datum.list(
+          new datum.ForOperator(),
+          datum.list(
+            datum.list(
+              new datum.Operator('in'),
+              datum.list(datum.symbol('var'), _k),
+              mod)),
+          datum.list(
+            datum.symbol('eval'),
+            datum.list(
+              datum.symbol('quasiquote'),
+              datum.list(
+                datum.symbol('use-from'),
+                mod,
+                datum.list(datum.symbol('unquote'), _k))))));
+    });
+
+  e.addRule(datum.list(
     datum.symbol('*import-all-globals*')), function () {
-      var global = util.getGlobal();
-      if (global) {
-        var names = datum.apply(datum.list, util.keys(global));
+      var glob = util.getGlobal();
+      if (glob) {
+        var names = datum.apply(datum.list, util.keys(glob));
         return datum.cons(
           datum.symbol('import-from'),
           datum.cons(
@@ -410,6 +499,18 @@ exports.makeExpander = function () {
   e.addRule(datum.list(
     datum.symbol('do'), datum.symbol('$$stuff')), function (ast, stuff) {
       return datum.cons(new datum.Operator(','), stuff);
+    });
+
+  e.addRule(datum.list(
+    expander.type(datum.TryOperator),
+    datum.symbol('$try')), function (ast, $try) {
+      return datum.concat(
+        ast,
+        datum.list(
+          datum.list(
+            new datum.CatchOperator,
+            datum.gensym('err'),
+            null)));
     });
 
   e.addRule(datum.list(

@@ -9,7 +9,7 @@ function JavaScriptCode(code) {
 }
 exports.JavaScriptCode = JavaScriptCode;
 JavaScriptCode.prototype.inspect = function () {
-  return util.color('@{' + this.code + '}', 'magenta');
+  return '@{' + util.color(this.code, 'magenta') + '}';
 };
 
 function Symbol(name) {
@@ -163,6 +163,14 @@ function ForOperator() {}
 inspectableOperator(ForOperator, 'for');
 makeSpecialOperator(ForOperator);
 
+function TryOperator() {}
+inspectableOperator(TryOperator, 'try');
+makeSpecialOperator(TryOperator);
+
+function CatchOperator() {}
+inspectableOperator(CatchOperator, 'catch');
+makeSpecialOperator(CatchOperator);
+
 function Quote() {}
 util.inspectable(Quote);
 makeSpecialOperator(Quote);
@@ -193,15 +201,6 @@ exports.identity = function (x) {
   return x;
 };
 
-exports.inspectObject = function (o) {
-  var call = datum.list(datum.symbol('object')),
-      step = call;
-  for (var k in o) {
-    step = step.right = datum.cons(datum.cons(k, o[k]));
-  }
-  return util.inspect(call);
-};
-
 function Cons(left, right) {
   this.left = left;
   this.right = right;
@@ -210,9 +209,9 @@ exports.Cons = Cons;
 
 var consInspect = function (p) {
   return [
-    '(', util.inspect(p.left),
+    '(', util.lispInspect(p.left),
     util.color(' · ', 'magenta'),
-    util.inspect(p.right), ')'
+    util.lispInspect(p.right), ')'
   ].join('');
 };
 
@@ -222,7 +221,7 @@ var listInspect = function (ls) {
     if (exports.isList(x)) {
       result.push(listInspect(x));
     } else {
-      result.push(util.inspect(x));
+      result.push(util.lispInspect(x));
     }
   }, ls);
   result = result.join(' ');
@@ -558,6 +557,9 @@ exports.reverse = function (ls) {
 
 exports.nth = function (n, ls) {
   var i, node;
+  if (n < 0) {
+    n = datum.length(ls) + n;
+  }
   if (ls instanceof Cons) {
     node = ls;
     i = 0;

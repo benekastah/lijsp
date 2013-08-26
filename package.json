@@ -1,13 +1,18 @@
 {
   "name": "lijsp",
   "version": "0.0.0",
-  "description": "A lisp to js compile we can all not give a shit about",
+  "preferGlobal": true,
+  "description": "A lisp to js compiler we can all not give a shit about",
   "main": "lijsp.js",
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "test": "mocha && mocha --harmony"
+    "test": "mocha && mocha --harmony && mocha test/lisp/test",
+    "prepublish": "./bin/build"
+  },
+  "bin": {
+    "lijsp": "./bin/lijsp"
   },
   "repository": {
     "type": "git",

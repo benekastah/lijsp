@@ -232,6 +232,10 @@ exports.makeParser = function (lex) {
         return new datum.PropertyAccessOperator();
       } else if (opText === 'for') {
         return new datum.ForOperator();
+      } else if (opText === 'try') {
+        return new datum.TryOperator();
+      } else if (opText === 'catch') {
+        return new datum.CatchOperator();
       } else {
         throw 'Unrecognized operator: ' + op.matchText;
       }
