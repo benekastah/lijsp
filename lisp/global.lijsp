@@ -82,6 +82,12 @@
 
 (defsyntax (if $a $b $c) `(@<?:> ,$a ,$b ,$c))
 
+(defsyntax (cond ($cond $action) $$rest)
+  `(if ,$cond ,$action (cond ,@$$rest)))
+
+(defsyntax (cond)
+  `())
+
 (defsyntax (get $obj $$props) `(@<.> ,$obj ,@$$props))
 
 (defsyntax (set $x $val)
@@ -113,14 +119,19 @@
     ;; Get logic functions
     (def-require ("./modules/logic.lijsp.js" as lisp/modules/logic))
     (use-from lisp/modules/logic
-              < > <= >= not)
+              < > <= >= not eq not-eq = not=)
 
     ;; Get math functions
     (def-require ("./modules/math.lijsp.js" as lisp/modules/math))
     (use-from lisp/modules/math
               + - * / mod ** bitwise-and bitwise-or bitwise-xor
-              bitwise-not bitwise-shift
-              ))
+              bitwise-not bitwise-shift bitwise-left-shift
+              bitwise-right-shift bitwise-zero-fill-right-shift
+              )
+
+    (def-require ("./modules/data.lijsp.js" as lisp/modules/data))
+    (use-from lisp/modules/data
+              enum))
   (@<catch> e
             (@<&&> (@<!> (@<===> (@<.> e 'code) "MODULE_NOT_FOUND"))
                    ((@<.> console 'error) e))))

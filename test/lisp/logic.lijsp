@@ -1,0 +1,89 @@
+
+
+(import-all-from lisp/test)
+
+(defsyntax (assert-logic $answer $call)
+  `(test-macro-fn assert-eq ,$answer ,$call))
+
+(describe
+  "<"
+  (assert-fn <)
+  (it "should be able to do a single comparison"
+      (assert-logic #t (< 1 2))
+      (assert-logic #f (< 4 3))
+      (assert-logic #f (< 5 5)))
+
+  (it "should be able to do chained comparisons"
+      (assert-logic #t (< 1 2 3 4 5))
+      (assert-logic #f (< 1 2 3 5 4))))
+
+(describe
+  ">"
+  (assert-fn >)
+  (it "should be able to do a single comparison"
+      (assert-logic #f (> 1 2))
+      (assert-logic #t (> 4 3)))
+
+  (it "should be able to do chained comparisons"
+      (assert-logic #f (> 5 4 3 3 1))
+      (assert-logic #t (> 5 4 3 2 1))))
+
+(describe
+  "<="
+  (assert-fn <=)
+  (it "should be able to do a single comparison"
+      (assert-logic #t (<= 2 2))
+      (assert-logic #t (<= 2 3))
+      (assert-logic #f (<= 4 3)))
+
+  (it "should be able to do chained comparisons"
+      (assert-logic #t (<= 1 2 3 3 5))
+      (assert-logic #f (<= 1 2 3 5 4))))
+
+(describe
+  ">="
+  (assert-fn >=)
+  (it "should be able to do a single comparison"
+      (assert-logic #t (>= 4 2))
+      (assert-logic #t (>= 4 4))
+      (assert-logic #f (>= 4 5)))
+
+  (it "should be able to do chained comparisons"
+      (assert-logic #f (>= 5 4 2 3 1))
+      (assert-logic #t (>= 5 4 3 3 2))))
+
+(describe
+  "not"
+  (assert-fn not)
+  (it "should be able to negate things"
+      (assert-logic #t (not 0))
+      (assert-logic #f (not 1))))
+
+(describe
+  "eq"
+  (assert-fn eq)
+  (it "should be the same as =="
+      (assert-logic (@<==> 5 "5") (eq 5 "5"))
+      (assert-logic (@<==> "asdf" "fdsa") (eq "asdf" "fdsa"))))
+
+(describe
+  "not-eq"
+  (assert-fn not-eq)
+  (it "should be the same as !="
+      (assert-logic (@<!=> 5 "5") (not-eq 5 "5"))
+      (assert-logic (@<!=> "asdf" "fdsa") (not-eq "asdf" "fdsa"))))
+
+(describe
+  "="
+  (assert-fn =)
+  (it "should be the same as ==="
+      (assert-logic (@<===> 5 "5") (= 5 "5"))
+      (assert-logic (@<===> 3 6) (= 3 6))))
+
+(describe
+  "not="
+  (assert-fn not=)
+  (it "should be the same as !=="
+      (assert-logic (@<!==> 5 "5") (not= 5 "5"))
+      (assert-logic (@<!==> 3 6) (not= 3 6))))
+

@@ -1,46 +1,43 @@
-
-(defsyntax (def-macro-fn $macro)
-  `(def (,$macro)
-     (eval (concat (list ',$macro) arguments))))
+(import modules/logic)
 
 (defsyntax (def-math-fn $sym $op)
   `(statements
      (defsyntax (,$sym $$rest)
-      (concat (list ',$op)
-              (map (lambda (x)
-                     (list '@<+> x)) $$rest)))
+      (concat (list ',$op) $$rest))
      (def-macro-fn ,$sym)))
+
+(defsyntax (def-math-fn-2 $sym $op)
+  `(statements
+     (defsyntax (,$sym $a $b)
+        (list ',$op $a $b))
+     (def (,$sym a b)
+        (,$sym a b))))
+
+(defsyntax (def-math-fn-1 $sym $op)
+  `(statements
+     (defsyntax (,$sym $x)
+        (list ',$op $x))
+     (def (,$sym x)
+        (,$sym x))))
 
 (def-math-fn + @<+>)
 (def-math-fn - @<->)
 (def-math-fn * @<*>)
 (def-math-fn / @</>)
+(def-math-fn-2 mod @<%>)
+(def ** (get Math 'pow))
 
-(defsyntax (mod $a $b)
-  `(@<%> ,$a ,$b))
-
-(def (mod a b)
-  (mod a b))
-
-(def ** (@<.> Math 'pow))
-
-(def (bitwise-and a b)
-  (@<&> a b))
-
-(def (bitwise-or a b)
-  (@<|> a b))
-
-(def (bitwise-xor a b)
-  (@<^> a b))
-
-(def (bitwise-not a)
-  (@<~> a))
+(def-math-fn-2 bitwise-and @<&>)
+(def-math-fn-2 bitwise-or @<|>)
+(def-math-fn-2 bitwise-xor @<^>)
+(def-math-fn-1 bitwise-not @<~>)
+(def-math-fn-2 bitwise-left-shift @<<<>)
+(def-math-fn-2 bitwise-right-shift @<>>>)
+(def-math-fn-2 bitwise-zero-fill-right-shift @<>>>>)
 
 (def (bitwise-shift n bit-count fill-zero)
-  (if (@<>> bit-count 0)
-    (@<<<> n bit-count)
-    (if (@<<> bit-count 0)
-      (if fill-zero
-        (@<>>>> n (- bit-count))
-        (@<>>> n (- bit-count)))
-      n)))
+  (if (>= bit-count 0)
+    (bitwise-left-shift n bit-count)
+    (if fill-zero
+      (bitwise-zero-fill-right-shift n (- bit-count))
+      (bitwise-right-shift n (- bit-count)))))

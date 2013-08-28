@@ -1,0 +1,9 @@
+
+(import modules/math)
+
+(defsyntax (enum $$stuff)
+  (var (i 0))
+  `(statements
+     ,@(map (lambda (nm)
+              (list 'def nm (bitwise-left-shift 1 (i @<++>))))
+            $$stuff)))

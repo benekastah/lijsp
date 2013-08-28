@@ -116,7 +116,7 @@ defToken('String', '"', function (match) {
       result;
   while ((result = lex.lex()) && result.token !== exports.StringClose) {
     if (result.token === exports.EOF) {
-      throw new Lexer.Error(this.input, 'Unexpected EOF');
+      throw new LexerError(this.input, 'Unexpected EOF');
     }
     string += result.matchText;
   }
@@ -139,7 +139,7 @@ defToken('Unquote', ',');
 
 defToken('Dot', '.', '·');
 
-var symbolChars = '\\w\\-+\\|\$!@%\\^&\\*=:\\?\\/<>\\\\~\\.';
+var symbolChars = '\\w\\-+\\|\$!@#%\\^&\\*=:\\?\\/<>\\\\~\\.';
 defToken('JSOperator', new RegExp('@<\\s*([' + symbolChars + ']+)\\s*>'));
 defToken('Symbol', new RegExp('[' + symbolChars + ']+'));
 
@@ -151,6 +151,7 @@ defToken('EOF');
 function Lexer(stream, tokens) {
   this.input = stream;
   this.tokens = tokens || [];
+  this.memo = {};
 }
 exports.Lexer = Lexer;
 
@@ -159,10 +160,19 @@ Lexer.prototype.lex = function () {
     return new TokenMatch(exports.EOF);
   }
 
+  // See if we have gotten a result for this position before and if so,
+  // return that result.
+  var _p = this.input._p,
+      memod = this.memo[_p];
+  if (memod) {
+    this.input.setPointer(memod.end_p);
+    return memod.result;
+  }
+
   for (var i = 0, len = this.tokens.length; i < len; i++) {
     var tok = this.tokens[i],
         action = datum.identity,
-        match;
+        match, result;
 
     if (util.type(tok) === '[object Array]') {
       action = tok[1];
@@ -171,24 +181,31 @@ Lexer.prototype.lex = function () {
 
     match = tok.match(this.input);
     if (match) {
-      return action.call(this, match);
+      result = action.call(this, match);
+      // Cache this result so we don't have to recompute it later.
+      memod = {
+        result: result,
+        end_p: this.input._p
+      };
+      this.memo[_p];
+      return result;
     }
   }
 
-  throw new Lexer.Error(this.input);
+  throw new LexerError(this.input);
 };
 
 function LexerError(input, message) {
   this.input = input;
   this.input_p = input._p;
-  LexerError.super_.call(this);
-  this.message += ': Can\'t lex: "' + this.input.peek() + '"';
+  var m = 'Can\'t lex: "' + this.input.peek() + '"';
   if (message) {
-    this.message += ': ' + message;
+    m += ': ' + message;
   }
+  LexerError.super_.call(this, m);
 }
 util.inherits(LexerError, util.AbstractError);
-Lexer.Error = LexerError;
+exports.LexerError = LexerError;
 
 
 exports.makeLexer = function (input) {

@@ -242,7 +242,14 @@ exports.makeParser = function (lex) {
     }]).
     action('Expression',
       'Operator',
-      [lexer.Symbol, function (s) { return new datum.Symbol(s.matchText); }],
+      [lexer.Symbol, function (s) {
+        switch (s.matchText) {
+          case 'nil': return null;
+          case '#t': return true;
+          case '#f': return false;
+          default: return new datum.Symbol(s.matchText);
+        }
+      }],
       [lexer.Number, function (n) { return +n.matchText; }],
       [lexer.String, function (s) { return s.matchText; }],
       [lexer.JSCode, function (js) {

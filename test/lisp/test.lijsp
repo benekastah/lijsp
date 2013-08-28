@@ -19,3 +19,12 @@
 (def (assert-nums-eq)
   (apply assert-eq-to-precision 15 arguments ()))
 
+(def (assert-fn x)
+  (assert-eq "function" (@<typeof> x)))
+
+(defsyntax (test-macro-fn $assert-fn $answer $call)
+  `(do
+     (,$assert-fn ,$answer ,$call)
+     (,$assert-fn ,$answer
+                     (apply ,(first $call) (list ,@(tail $call))))))
+

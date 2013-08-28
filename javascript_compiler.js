@@ -310,5 +310,13 @@ exports.makeCompiler = function (parser, opts) {
     return 'void(0)';
   });
 
+  compiler.addRule(true, function () {
+    return 'true';
+  });
+
+  compiler.addRule(false, function () {
+    return 'false';
+  });
+
   return compiler;
 };

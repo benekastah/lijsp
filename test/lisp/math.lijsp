@@ -1,0 +1,95 @@
+
+(import-all-from lisp/test)
+
+(defsyntax (assert-math $answer $call)
+  `(test-macro-fn assert-nums-eq ,$answer ,$call))
+
+(describe
+  "Math operations"
+  (it "should be able to add"
+      (assert-fn +)
+      (assert-math 5 (+ 3 1 1))
+      (assert-math 4.6 (+ 2 2 0.6)))
+
+  (it "should be able to subtract"
+      (assert-fn -)
+      (assert-math 10 (- 50 30 10))
+      (assert-math 0.4 (- 1.4 1)))
+
+  (it "should be able to negate a number"
+      (assert-math -5 (- 5))
+      (let ((n 0.6))
+        (assert-math -0.6 (- n))))
+
+  (it "should be able to multiply"
+      (assert-fn *)
+      (assert-math 9 (* 3 3))
+      (assert-math 10.2 (* 5.1 2)))
+
+  (it "should be able to divide"
+      (assert-fn /)
+      (assert-math 4.5 (/ 9 2))
+      (assert-math 40.2 (/ 20.1 0.5 1)))
+
+  (it "should be able do calculate modulus"
+      (assert-fn mod)
+      (assert-math 3 (mod 66 7))
+      (assert-math 0 (mod 10 2))))
+
+(describe
+  "Bitwise math operations"
+  (it "should be able to and"
+      (assert-fn bitwise-and)
+      (assert-math @{4 & 5} (bitwise-and 4 5))
+      (assert-math @{0.5 & 345} (bitwise-and 0.5 345)))
+
+  (it "should be able to or"
+      (assert-fn bitwise-or)
+      (assert-math @{3 | 6} (bitwise-or 3 6))
+      (assert-math @{600 | 701} (bitwise-or 600 701)))
+
+  (it "should be able to xor"
+      (assert-fn bitwise-xor)
+      (assert-math @{5 ^ 7} (bitwise-xor 5 7))
+      (assert-math @{5.6 ^ 4.5} (bitwise-xor 5.6 4.5)))
+
+  (it "should be able to not"
+      (assert-fn bitwise-not)
+      (assert-math @{~ 4} (bitwise-not 4))
+      (assert-math @{~ 77} (bitwise-not 77)))
+
+  (it "should be able to left shift"
+      (assert-fn bitwise-left-shift)
+      (assert-math @{10 << 3} (bitwise-left-shift 10 3))
+      (assert-math @{45 << 0} (bitwise-left-shift 45 0)))
+
+  (it "should be able to right shift"
+      (assert-fn bitwise-right-shift)
+      (assert-math @{33 >> 4} (bitwise-right-shift 33 4))
+      (assert-math @{5.6 >> 2} (bitwise-right-shift 5.6 2)))
+
+  (it "should be able to zero-fill right shift"
+      (assert-fn bitwise-zero-fill-right-shift)
+      (assert-math @{67 >>> 23} (bitwise-zero-fill-right-shift 67 23))
+      (assert-math @{3 >>> 10} (bitwise-zero-fill-right-shift 3 10))))
+
+(describe "bitwise-shift"
+  (it "should left shift with a second argument >= 0"
+      (assert-nums-eq (bitwise-left-shift 4 2) (bitwise-shift 4 2))
+      (assert-nums-eq (bitwise-left-shift 20 31) (bitwise-shift 20 31))
+      (assert-nums-eq (bitwise-left-shift 4 0) (bitwise-shift 4 0))
+      (assert-nums-eq (bitwise-left-shift 4.5 0) (bitwise-shift 4.5 0)))
+
+  (it "should ignore the third argument with a positive second argument"
+      (assert-nums-eq (bitwise-left-shift 5 2) (bitwise-shift 5 2 1))
+      (assert-nums-eq (bitwise-left-shift 1 1) (bitwise-shift 1 1 1)))
+
+  (it "should right shift with a negative number"
+      (assert-nums-eq (bitwise-right-shift 5 4) (bitwise-shift 5 -4))
+      (assert-nums-eq (bitwise-right-shift 4 9) (bitwise-shift 5 -9)))
+
+  (it "should zero-fill right shift with a negative number and a truthy third argument"
+      (assert-nums-eq (bitwise-zero-fill-right-shift 4 6)
+                      (bitwise-shift 4 -6 1))
+      (assert-nums-eq (bitwise-zero-fill-right-shift 7 8)
+                      (bitwise-shift 7 -8 1))))
