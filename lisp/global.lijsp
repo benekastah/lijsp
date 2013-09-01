@@ -114,6 +114,12 @@
   `(def (,$macro)
      (eval (concat (list ',$macro) arguments))))
 
+(defsyntax (str $$rest)
+  `(@<+> "" ,@$$rest))
+
+(def (name x)
+  (@<.> x 'name))
+
 (@<try>
   (statements
     ;; Get logic functions

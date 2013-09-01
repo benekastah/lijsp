@@ -1,9 +1,17 @@
 
 (import modules/math)
 
-(defsyntax (enum $$stuff)
+(defsyntax (enum $name ($$stuff))
   (var (i 0))
   `(statements
      ,@(map (lambda (nm)
-              (list 'def nm (bitwise-left-shift 1 (i @<++>))))
+              (list 'def
+                    (symbol (str (name $name) "-" (name nm)))
+                    (bitwise-left-shift 1 (i @<++>))))
             $$stuff)))
+
+(defsyntax (flags $$nums)
+  `(bitwise-or ,@(if $$nums $$nums '(0))))
+
+(defsyntax (flag-get $flags $flag)
+  `(bitwise-and ,$flags, $flag))

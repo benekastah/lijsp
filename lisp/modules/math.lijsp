@@ -20,16 +20,19 @@
      (def (,$sym x)
         (,$sym x))))
 
-(def-math-fn + @<+>)
+(defsyntax (+ $$args)
+  `(@<+> ,@(map (lambda (x) (list '@<+> x)) $$args)))
+(def-macro-fn +)
+
 (def-math-fn - @<->)
 (def-math-fn * @<*>)
 (def-math-fn / @</>)
 (def-math-fn-2 mod @<%>)
 (def ** (get Math 'pow))
 
-(def-math-fn-2 bitwise-and @<&>)
-(def-math-fn-2 bitwise-or @<|>)
-(def-math-fn-2 bitwise-xor @<^>)
+(def-math-fn bitwise-and @<&>)
+(def-math-fn bitwise-or @<|>)
+(def-math-fn bitwise-xor @<^>)
 (def-math-fn-1 bitwise-not @<~>)
 (def-math-fn-2 bitwise-left-shift @<<<>)
 (def-math-fn-2 bitwise-right-shift @<>>>)
