@@ -32,7 +32,8 @@
     "url": "https://github.com/benekastah/lijsp/issues"
   },
   "devDependencies": {
-    "mocha": "~1.12.0"
+    "mocha": "~1.12.0",
+    "benchmark": "~1.0.0"
   },
   "dependencies": {
     "colors": "~0.6.1",
