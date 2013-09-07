@@ -28,4 +28,9 @@ exports.run = function () {
   this.add('symbol', function () {
     datum.symbol('this_is_a_symbol');
   });
+
+  var length_list = datum.list(1, 2, 3, 4, 5, 6, 7, 8);
+  this.add('length', function () {
+    datum.length(length_list);
+  });
 };

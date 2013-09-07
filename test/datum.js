@@ -403,7 +403,7 @@ describe('Collection', function () {
     }
 
     it('should be able to add items to lists', function () {
-      testListyAdd(datum.list(1));
+      testListyAdd(new datum.Cons(1));
     });
 
     it('should be able to add items to arrays', function () {

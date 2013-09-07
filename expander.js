@@ -77,11 +77,21 @@ Expander.prototype.addRule = function (comparator, action, setName) {
     setName = this.DEFAULT_RULESET_NAME;
   }
   var set = this.rules[setName] || (this.rules[setName] = []);
+
+  comparator = expander.resolveTemplateVariables(comparator);
   set.push({
     comparator: comparator,
     action: action
   });
   return this;
+};
+
+exports.resolveTemplateVariables = function (x) {
+  if (datum.isList(x)) {
+    return datum.map(expander.resolveTemplateVariables, x);
+  } else {
+    return expander.toTemplateVariable(x);
+  }
 };
 
 exports.toTemplateVariable = function (sym) {
@@ -139,7 +149,6 @@ exports.compare = function (comparator, ast, match) {
     return comparator(ast);
   }
 
-  comparator = exports.toTemplateVariable(comparator);
   var isTemplateVariable = comparator instanceof datum.TemplateVariable;
   if (!isTemplateVariable) {
     // Ensure each is the same type
@@ -152,7 +161,9 @@ exports.compare = function (comparator, ast, match) {
     }
   }
 
-  if (datum.isList(comparator) && datum.isList(ast)) {
+  if (isTemplateVariable) {
+    match.push(ast);
+  } else if (datum.isList(comparator) && datum.isList(ast)) {
     var cNode = comparator,
         aNode = ast,
         result;
@@ -161,7 +172,6 @@ exports.compare = function (comparator, ast, match) {
       if (!cNode) {
         return false;
       }
-      cNode.left = exports.toTemplateVariable(cNode.left);
       if (cNode.left instanceof datum.TemplateRestVariable) {
         match.push(aNode);
         if (cNode.right) {
@@ -186,8 +196,6 @@ exports.compare = function (comparator, ast, match) {
     if (comparator.name !== ast.name) {
       return false;
     }
-  } else if (isTemplateVariable) {
-    match.push(ast);
   } else if (comparator !== ast) {
     return false;
   }
@@ -462,6 +470,12 @@ exports.makeExpander = function () {
       }
     });
 
+  var useFromNameListComparator = expander.resolveTemplateVariables(
+    datum.list(
+      datum.symbol('$name1'),
+      datum.symbol('as'),
+      datum.symbol('$name2')));
+
   e.addRule(datum.list(
     datum.symbol('use-from'),
     datum.symbol('$obj'),
@@ -471,13 +485,10 @@ exports.makeExpander = function () {
         if (impt instanceof datum.Symbol) {
           name1 = name2 = impt;
         } else if (util.type(impt) === '[object String]') {
-          name1 = name2 = datum.symbol(impt, true);
+          name1 = name2 = datum.symbol(impt);
         } else if (datum.isList(impt)) {
           var result = exports.compare(
-            datum.list(
-              datum.symbol('$name1'),
-              datum.symbol('as'),
-              datum.symbol('$name2')),
+            useFromNameListComparator,
             impt);
           name1 = result[1];
           name2 = result[2];

@@ -15,3 +15,9 @@
 
 (defsyntax (flag-get $flags $flag)
   `(bitwise-and ,$flags, $flag))
+
+; (defsyntax (matcher comparator)
+;   `(lambda (ast)
+;
+;      )
+;            )

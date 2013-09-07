@@ -253,7 +253,8 @@ exports.makeCompiler = function (parser, opts) {
     });
 
   var quotedComparator = datum.list(
-    expander.type(datum.Quote), datum.symbol('$x'));
+    expander.type(datum.Quote),
+    expander.toTemplateVariable(datum.symbol('$x')));
 
   compiler.addRule(datum.list(
     expander.type(datum.PropertyAccessOperator),

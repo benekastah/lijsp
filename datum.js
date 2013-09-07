@@ -241,9 +241,11 @@ exports.cons = function (left, right) {
 };
 
 exports.list = function () {
-  var result;
-  for (var i = arguments.length - 1; i >= 0; i--) {
+  var result, argslen = arguments.length;
+  for (var i = argslen - 1; i >= 0; i--) {
     result = new Cons(arguments[i], result);
+    result.__isList__ = true;
+    result.length = argslen - i;
   }
   return result;
 };
@@ -255,14 +257,30 @@ exports.apply = function (fn) {
   return fn.apply(this, args);
 };
 
-exports.isList = function (ls) {
-  if (ls == null) {
+/**
+ * This adds an __isList__ property to all Cons cells that may be lists.
+ * This is because it is expected that Cons cells won't be modified in a
+ * program (though this is not strictly enforced). The result is that
+ * this function is effectively memoized (actual lists perform the worst in
+ * this function, and the result will only have to be calculated once per
+ * identical list).
+ */
+exports.isList = function (input) {
+  if (input == null) {
     return true;
   }
+  if (input instanceof Cons && '__isList__' in input) {
+    return input.__isList__;
+  }
+  var ls = input;
   var result = !!ls;
   while (result && ls) {
     result = ls instanceof Cons;
     ls = ls.right;
+  }
+
+  if (input instanceof Cons) {
+    input.__isList__ = result;
   }
   return result;
 };
@@ -271,10 +289,25 @@ exports.isPair = function (p) {
   return p instanceof Cons && !exports.isList(p);
 };
 
+/**
+ * The length property is added to lists because it is expected they will
+ * not change in a program, though this is not strictly enforced. This
+ * causes future calls on the same list to be much faster than the first.
+ */
 exports.length = function (ls) {
-  var result = 0, t = util.type(ls), iter, next;
-  if (util.typeIsArrayLike(t)) {
-    result = ls.length;
+  var result = 0, iter, next;
+
+  if (ls && typeof ls.length === 'number') {
+    return ls.length;
+  }
+
+  if (datum.isList(ls)) {
+    if (!ls) {
+      result = 0;
+    } else {
+      result = 1 + exports.length(ls.right);
+      ls.length = result;
+    }
   } else {
     iter = new Iterable(ls);
     while (!(next = iter.next()).done) {

@@ -29,6 +29,28 @@ describe('getTemplateVariables', function () {
   });
 });
 
+describe('resolveTemplateVariables', function () {
+  it('should be able to convert symbols to template variables in a list', function () {
+    var ls = datum.list(1, 2, datum.symbol('$a'),
+                        datum.list(datum.symbol('$$b')));
+    var result = expander.resolveTemplateVariables(ls);
+    assert.equal(1, datum.nth(0, result));
+    assert.equal(2, datum.nth(1, result));
+    assert.ok(datum.nth(2, result) instanceof datum.TemplateVariable,
+             '$a was not converted to template variable');
+    assert.ok(datum.first(datum.nth(3, result)) instanceof
+              datum.TemplateRestVariable,
+             '$$b was not converted to template variable');
+  });
+
+  it('should be able to convert symbol to template variable', function () {
+    var s = datum.symbol('$c');
+    var result = expander.resolveTemplateVariables(s);
+    assert.ok(result instanceof datum.TemplateVariable,
+             '$c was not converted to template variable');
+  });
+});
+
 describe('compare', function () {
   it('should be able to compare simple values', function () {
     assert.ok(expander.compare(1, 1), 'identical numbers');
@@ -60,12 +82,12 @@ describe('compare', function () {
   it('should be able to compare template symbols to anything', function () {
     assert.ok(
       expander.compare(
-        new datum.Symbol('$a'),
+        expander.toTemplateVariable(new datum.Symbol('$a')),
         1),
       '$a can be 1');
     assert.ok(
       expander.compare(
-        new datum.Symbol('$hey-there'),
+        expander.toTemplateVariable(new datum.Symbol('$hey-there')),
         new datum.Cons(1)),
       '$hey-there can be a list');
   });
@@ -73,18 +95,20 @@ describe('compare', function () {
   it('should compare a list recursively', function () {
     assert.ok(
       expander.compare(
-        datum.list(
-          new datum.Symbol('$a'),
-          new datum.Symbol('+'),
-          new datum.Symbol('$b')),
+        expander.resolveTemplateVariables(
+          datum.list(
+            new datum.Symbol('$a'),
+            new datum.Symbol('+'),
+            new datum.Symbol('$b'))),
         datum.list(1, new datum.Symbol('+'), 2)),
       'complex list pass');
     assert.ok(
       !expander.compare(
-        datum.list(
-          new datum.Symbol('$a'),
-          new datum.Symbol('+'),
-          new datum.Symbol('$b')),
+        expander.resolveTemplateVariables(
+          datum.list(
+            new datum.Symbol('$a'),
+            new datum.Symbol('+'),
+            new datum.Symbol('$b'))),
         datum.list(1, new datum.Symbol('-'), 2)),
       'complex list fail');
     assert.ok(
@@ -114,9 +138,10 @@ describe('compare', function () {
 
   it('should be able to gather rest arguments', function () {
     var match = expander.compare(
-      datum.list(
-        datum.symbol('$a'),
-        datum.symbol('$$rest')),
+      expander.resolveTemplateVariables(
+        datum.list(
+          datum.symbol('$a'),
+          datum.symbol('$$rest'))),
       datum.list(1, 2, 3));
     var a = match[1];
     var rest = match[2];
