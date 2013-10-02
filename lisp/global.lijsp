@@ -54,6 +54,12 @@
   (var (args (map (lambda (x) (inspect x)) arguments)))
   (apply (@<.> console 'log) args))
 
+(defsyntax (time $name $$body)
+  `(statements
+     ((@<.> console 'time) ,$name)
+     ,@$$body
+     ((@<.> console 'timeEnd) ,$name)))
+
 (def (nil? x)
   (@<==> x ()))
 

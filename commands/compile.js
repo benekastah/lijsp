@@ -117,6 +117,16 @@ exports.execute = function (args) {
     }, file);
   };
 
+  var getCompiledFname = function (fpath) {
+    fpath = path.normalize(fpath);
+    return path.relative(appDir, path.resolve(fpath)) + '.js';
+  };
+
+  var getCompiledFpath = function (fpath, outdir, fpathIsCompiled) {
+    return path.join(
+      outdir, fpathIsCompiled ? fpath : getCompiledFname(fpath));
+  };
+
   var appendToOutput = function (err, fpath, outdir, data, cb) {
     handleError(err);
     if (isGlobalFile(fpath)) {
@@ -129,15 +139,14 @@ exports.execute = function (args) {
       data = optimizeOutput(data, fpath);
     }
     if (outdir) {
-      var jsFname;
+      var jsFname, jsFpath;
       if (fpath) {
-        fpath = path.normalize(fpath);
-        jsFname = path.relative(appDir, path.resolve(fpath)) + '.js';
+        jsFname = getCompiledFname(fpath);
       } else {
         // fpath should only be blank if compiling from stdin
         jsFname = 'compiled-lijsp.js';
       }
-      var jsFpath = path.join(outdir, jsFname);
+      jsFpath = getCompiledFpath(jsFname, outdir, true);
       var _outdir = path.dirname(jsFpath);
       mkdirp(_outdir, function (err) {
         handleError(err);
@@ -200,23 +209,45 @@ exports.execute = function (args) {
     process.stdin.on('error', handleError);
   };
 
+  var fileOlderThan = function (f1, f2) {
+    if (fs.existsSync(f1) && fs.existsSync(f2)) {
+      var stat1 = fs.statSync(f1);
+      var stat2 = fs.statSync(f2);
+      console.log(f1, stat1.mtime, '<>', f2, stat2.mtime);
+      return stat1.mtime < stat2.mtime;
+    }
+    return false;
+  };
+
   // Compilation needs to be syncronous.
   var compileFile = function (f, cb) {
-    var err, data;
-    if (f in compiledFiles) {
+    var err, data, fCompiled;
+    console.log('Compiling ' + f);
+    fCompiled = getCompiledFpath(f, outdir);
+    var alreadyCompiled;
+    if (f in compiledFiles ||
+        (alreadyCompiled = fileOlderThan(f, fCompiled))) {
+      console.log('  Using previous result. Nothing to do.');
+      if (alreadyCompiled) {
+        try {
+          require(fCompiled);
+        } catch (e) {
+          console.warn('Failed trying to require previously compiled file '
+                       + fCompiled + ':', e);
+        }
+      }
       cb && cb();
-      return;
+    } else {
+      try {
+        data = fs.readFileSync(f, 'utf8');
+      } catch (e) {
+        err = e;
+      }
+      compileOne(err, f, data, makeOutputAppender(f, outdir, function (err) {
+        handleError(err);
+        cb && cb.apply(this, arguments);
+      }));
     }
-    try {
-      data = fs.readFileSync(f, 'utf8');
-      console.log('Compiling ' + f);
-    } catch (e) {
-      err = e;
-    }
-    compileOne(err, f, data, makeOutputAppender(f, outdir, function (err) {
-      handleError(err);
-      cb && cb.apply(this, arguments);
-    }));
   };
 
 

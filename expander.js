@@ -391,6 +391,8 @@ exports.makeExpander = function () {
       var opts = e.compiler.opts,
           isGlobal, requireF;
 
+      console.log('importing ', fileName.name);
+
       var appDirName = path.join(opts.appName, '/');
       if (util.startsWith(fileName.name, appDirName)) {
         requireF = path.relative(

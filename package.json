@@ -8,7 +8,7 @@
     "test": "test"
   },
   "scripts": {
-    "test": "mocha && mocha --harmony && mocha test/lisp/test",
+    "test": "./bin/build && mocha && mocha --harmony && mocha test/lisp/test",
     "prepublish": "./bin/build"
   },
   "bin": {

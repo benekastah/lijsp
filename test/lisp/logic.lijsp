@@ -1,5 +1,4 @@
 
-
 (import-all-from lisp/test)
 
 (defsyntax (assert-logic $answer $call)

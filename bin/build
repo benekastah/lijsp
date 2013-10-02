@@ -1,10 +1,9 @@
 #!/bin/sh
 
-if [ "$1" = "-g" ] || [ "$1" = "--graph" ]; then
-  GRAPH=1
-  sudo echo "Obtained sudo"
+if [ "$1" = "-C" ] || [ "$1" = "--clean" ]; then
+  CLEAN=1
 else
-  GRAPH=0
+  CLEAN=0
 fi
 
 INDEX=0
@@ -12,23 +11,14 @@ doCompileThing () {
   START=$SECONDS
   INPUT="$1"
   OUTPUT="$2"
-  echo "Cleaning previously compiled files..."
-  for JS in `find $OUTPUT -name "*.js"`; do
-    rm $JS
-  done
-  echo "Compiling $INPUT to $OUTPUT"
-  CMD="bin/lijsp compile -i $INPUT -o $OUTPUT -p"
-  if [ "$GRAPH" -eq 1 ]; then
-    DTRACEOUT="stacks_`echo $INDEX`.out"
-    SVGOUT="stacks_`echo $INDEX`.svg"
-    $CMD &
-    sudo dtrace -n "profile-97/pid == $! && arg1/{
-        @[jstack(150, 8000)] = count(); } tick-10s { exit(0); }" > $DTRACEOUT
-    stackvis dtrace flamegraph-svg < $DTRACEOUT > $SVGOUT
-    INDEX=$((INDEX+1))
-  else
-    $CMD
+  if [ "$CLEAN" -eq 1 ]; then
+    echo "Cleaning previously compiled files..."
+    for JS in `find $OUTPUT -name "*.js"`; do
+      rm $JS
+    done
   fi
+  echo "Compiling $INPUT to $OUTPUT"
+  bin/lijsp compile -i $INPUT -o $OUTPUT -p
   echo "Finished in $((SECONDS-START)) seconds."
 }
 
